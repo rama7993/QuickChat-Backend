@@ -29,7 +29,7 @@ router.post("/login", async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Set secure in production
-      sameSite: "strict",
+      sameSite: "none", // ✅ allows cross-origin cookies
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     });
 
@@ -114,6 +114,5 @@ router.post("/change-password", authMiddleware, async (req, res) => {
     res.status(500).send("Error: " + err.message);
   }
 });
-
 
 module.exports = router;
