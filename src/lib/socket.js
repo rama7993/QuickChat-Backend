@@ -15,14 +15,15 @@ module.exports = (io) => {
     });
 
     socket.on("chat message", async ({ roomId, message }) => {
-      console.log("Received chat message event:", roomId, message);
       try {
         const newMessage = new Message({
-          sender: message.senderId,
-          receiver: message.receiverId || null,
-          group: message.groupId || null,
+          sender: message.sender,
+          receiver: message.receiver || null,
+          group: message.group || null,
           content: message.content,
-          timestamp: new Date(),
+          timestamp: message.timestamp
+            ? new Date(message.timestamp)
+            : new Date(),
         });
 
         await newMessage.save();

@@ -32,12 +32,6 @@ app.use(
   })
 );
 
-// Routes
-app.use("/api/auth", authRouter);
-app.use("/api/users", usersRouter);
-app.use("/api/messages", chatRouter);
-app.use("/api/groups", groupRouter);
-
 // HTTP Server
 const server = http.createServer(app);
 // Socket.IO Server
@@ -45,6 +39,17 @@ const io = socketIO(server, {
   cors: { origin: "*" },
 });
 require("./lib/socket")(io);
+
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Routes
+app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/messages", chatRouter);
+app.use("/api/groups", groupRouter);
 
 // DB connection + server start
 connectDB()

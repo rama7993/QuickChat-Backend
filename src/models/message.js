@@ -9,10 +9,12 @@ const messageSchema = new mongoose.Schema({
   receiver: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
+    default: null,
   },
   group: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Group",
+    default: null,
   },
   content: {
     type: String,
@@ -22,16 +24,6 @@ const messageSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-});
-
-messageSchema.pre("save", function (next) {
-  if (!this.receiver && !this.group) {
-    return next(new Error("Either receiver or group must be specified."));
-  }
-  if (this.receiver && this.group) {
-    return next(new Error("Cannot have both receiver and group in message."));
-  }
-  next();
 });
 
 module.exports = mongoose.model("Message", messageSchema);

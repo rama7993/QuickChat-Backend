@@ -3,7 +3,7 @@ const router = express.Router();
 const Message = require("../models/message");
 const { authMiddleware } = require("../middlewares/auth");
 
-// ✅ Get Private Messages
+//  Get Private Messages
 router.get("/private/:userId", authMiddleware, async (req, res) => {
   const { userId } = req.params;
   const userA = req.user._id;
@@ -24,7 +24,7 @@ router.get("/private/:userId", authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ Get Group Messages
+// Get Group Messages
 router.get("/group/:groupId", authMiddleware, async (req, res) => {
   try {
     const messages = await Message.find({ group: req.params.groupId })
