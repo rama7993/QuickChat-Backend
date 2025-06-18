@@ -28,11 +28,13 @@ module.exports = (io) => {
 
         await newMessage.save();
 
-        io.to(roomId).emit("chat message", {
-          ...message,
-          _id: newMessage._id,
-          timestamp: newMessage.timestamp,
-        });
+        // 👉 Populate sender & receiver
+        const populatedMessage = await Message.findById(newMessage._id)
+          .populate("sender", "_id photoUrl")
+          .populate("receiver", "_id photoUrl");
+
+        // 🔁 Broadcast enriched message
+        io.to(roomId).emit("chat message", populatedMessage);
 
         console.log(`📨 Message saved & broadcasted in ${roomId}`);
       } catch (err) {
