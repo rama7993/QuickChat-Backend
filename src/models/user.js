@@ -1,8 +1,11 @@
 const mongoose = require("mongoose");
-const { Schema } = mongoose;
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const bcrypt = require("bcrypt");
+
+const { Schema } = mongoose;
+
+const GENDERS = ["Male", "Female", "Others"];
 
 const userSchema = new Schema(
   {
@@ -20,26 +23,34 @@ const userSchema = new Schema(
       type: String,
       unique: true,
       trim: true,
+      sparse: true, // Allows null but enforces uniqueness if value exists
     },
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
+    },
+    provider: {
+      type: String,
+      enum: ["local", "google", "linkedin"],
+      default: "local",
+    },
+    providerId: {
+      type: String,
+      default: null,
     },
     password: {
       type: String,
-      required: true,
       minlength: 8,
+      required: function () {
+        return this.provider === "local";
+      },
     },
     gender: {
       type: String,
-      validate(value) {
-        const genders = ["Male", "Female", "Others"];
-        if (!genders.includes(value)) {
-          throw new Error("Gender not valid");
-        }
-      },
+      enum: GENDERS,
     },
     photoUrl: {
       type: String,
@@ -68,20 +79,25 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-userSchema.methods.getJWT = async function () {
-  const user = this;
-  const token = await jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+//  Pre-save hook to hash password only for local strategy
+userSchema.pre("save", async function (next) {
+  if (this.isModified("password") && this.provider === "local") {
+    const saltRounds = parseInt(process.env.SALT_ROUNDS, 10) || 10;
+    this.password = await bcrypt.hash(this.password, saltRounds);
+  }
+  next();
+});
+
+//  JWT generator method
+userSchema.methods.getJWT = function () {
+  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.RESET_TOKEN_EXPIRATION || "7d",
   });
-  return token;
 };
 
-userSchema.methods.validatePassword = async function (userInputPassword) {
-  const user = this;
-  const passwordHash = user.password;
-  const isPasswordvalid = await bcrypt.compare(userInputPassword, passwordHash);
-  return isPasswordvalid;
+//  Password validation
+userSchema.methods.validatePassword = function (inputPassword) {
+  return bcrypt.compare(inputPassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema);
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);

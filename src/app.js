@@ -3,7 +3,7 @@ const socketIO = require("socket.io");
 const express = require("express");
 const connectDB = require("./config/database");
 const cookieParser = require("cookie-parser");
-const cors = require("cors");
+const { configureCors } = require("./utils/environment");
 require("dotenv").config();
 
 const authRouter = require("./routes/auth");
@@ -17,20 +17,7 @@ const port = process.env.PORT || 3000;
 // Middlewares
 app.use(express.json());
 app.use(cookieParser());
-
-const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+app.use(configureCors());
 
 // HTTP Server
 const server = http.createServer(app);

@@ -5,6 +5,13 @@ const { authMiddleware } = require("../middlewares/auth");
 const { validateUser } = require("../utils/validation");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
+const passport = require("passport");
+const jwt = require("jsonwebtoken");
+require("../config/passport");
+const { setTokenCookie, clearTokenCookie } = require("../utils/token");
+
+// Initialize Passport
+router.use(passport.initialize());
 
 /**
  * @route   POST /api/auth/login
@@ -13,29 +20,19 @@ const saltRounds = 10;
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).send("User not found");
-    }
+    if (!user) return res.status(404).send("User not found");
 
-    const isPasswordValid = await user.validatePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).send("Invalid password");
-    }
+    const isValid = await user.validatePassword(password);
+    if (!isValid) return res.status(401).send("Invalid password");
 
     const token = await user.getJWT();
+    setTokenCookie(res, token);
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Set secure in production
-      sameSite: "none", // ✅ allows cross-origin cookies
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    });
-
-    res.status(200).json({ message: "User logged in successfully", user });
-  } catch (error) {
-    res.status(400).send("Error: " + error.message);
+    const { password: _, ...userData } = user.toObject();
+    res.status(200).json({ message: "Logged in", user: userData });
+  } catch (err) {
+    res.status(400).send("Error: " + err.message);
   }
 });
 
@@ -45,13 +42,7 @@ router.post("/login", async (req, res) => {
  */
 router.post("/logout", (req, res) => {
   try {
-    res.cookie("token", null, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      expires: new Date(Date.now()),
-    });
-
+    clearTokenCookie(res);
     res.status(200).send("Logged out successfully");
   } catch (error) {
     res.status(400).send("Error: " + error.message);
@@ -114,5 +105,63 @@ router.post("/change-password", authMiddleware, async (req, res) => {
     res.status(500).send("Error: " + err.message);
   }
 });
+
+/** ---------- GOOGLE AUTH ---------- */
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+  })
+);
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: "/login",
+  }),
+  (req, res) => {
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    setTokenCookie(res, token);
+
+    const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
+    const origin = req.get("Origin");
+    const redirectBase =
+      origin && allowedOrigins.includes(origin)
+        ? origin
+        : "http://localhost:4200";
+
+    res.redirect(`${redirectBase}/login-success?token=${token}`);
+  }
+);
+
+/** ---------- LINKEDIN AUTH ---------- */
+router.get("/linkedin", passport.authenticate("linkedin", { session: false }));
+
+router.get(
+  "/linkedin/callback",
+  passport.authenticate("linkedin", {
+    session: false,
+    failureRedirect: "/login",
+  }),
+  (req, res) => {
+    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    setTokenCookie(res, token);
+
+    const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
+    const origin = req.get("Origin");
+    const redirectBase =
+      origin && allowedOrigins.includes(origin)
+        ? origin
+        : "http://localhost:4200";
+
+    res.redirect(`${redirectBase}/login-success?token=${token}`);
+  }
+);
 
 module.exports = router;
