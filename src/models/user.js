@@ -1,8 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
-
 const { Schema } = mongoose;
 
 const GENDERS = ["Male", "Female", "Others"];

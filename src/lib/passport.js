@@ -3,7 +3,6 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const LinkedInStrategy = require("passport-linkedin-oauth2").Strategy;
 const User = require("../models/user");
 const { getBackendBaseUrl } = require("../utils/environment");
-require("dotenv").config();
 const { URL } = require("url");
 
 const googleCallbackUrl = new URL(
