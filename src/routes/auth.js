@@ -133,6 +133,8 @@ router.get(
 );
 
 /** ---------- LINKEDIN AUTH ---------- */
+router.get("/linkedin", passport.authenticate("linkedin", { session: false }));
+
 router.get(
   "/linkedin/callback",
   passport.authenticate("linkedin", {

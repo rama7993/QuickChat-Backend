@@ -15,6 +15,12 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middlewares
+app.use((req, res, next) => {
+  console.log("🌍 Origin:", req.headers.origin);
+  console.log("🍪 Cookie:", req.headers.cookie);
+  next();
+});
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(configureCors());

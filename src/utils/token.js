@@ -3,8 +3,8 @@ function setTokenCookie(res, token) {
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // for HTTPS
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' only with HTTPS
+    secure: true, // only works over HTTPS
+    sameSite: "none", // allows cross-site cookie
     expires: new Date(Date.now() + oneWeek),
     path: "/", // for full site access
   });

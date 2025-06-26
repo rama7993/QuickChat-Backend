@@ -27,13 +27,15 @@ const getFrontendBaseUrl = () => {
 };
 
 const configureCors = () => {
-  const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
+  const allowedOrigins =
+    process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()) || [];
 
   return cors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.warn(`❌ Blocked by CORS: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
