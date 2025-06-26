@@ -9,6 +9,7 @@ const passport = require("passport");
 const jwt = require("jsonwebtoken");
 require("../lib/passport");
 const { setTokenCookie, clearTokenCookie } = require("../utils/token");
+const { getFrontendBaseUrl } = require("../utils/environment");
 
 // Initialize Passport
 router.use(passport.initialize());
@@ -127,22 +128,11 @@ router.get(
     });
 
     setTokenCookie(res, token);
-
-    const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
-    const origin = req.get("Origin");
-
-    const redirectBase =
-      origin && allowedOrigins.includes(origin)
-        ? origin
-        : "http://localhost:4200";
-
-    res.redirect(`${redirectBase}/login-success`);
+    res.redirect(`${getFrontendBaseUrl()}/login-success`);
   }
 );
 
 /** ---------- LINKEDIN AUTH ---------- */
-router.get("/linkedin", passport.authenticate("linkedin", { session: false }));
-
 router.get(
   "/linkedin/callback",
   passport.authenticate("linkedin", {
@@ -154,15 +144,7 @@ router.get(
       expiresIn: "7d",
     });
     setTokenCookie(res, token);
-
-    const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
-    const origin = req.get("Origin");
-    const redirectBase =
-      origin && allowedOrigins.includes(origin)
-        ? origin
-        : "http://localhost:4200";
-
-    res.redirect(`${redirectBase}/login-success`);
+    res.redirect(`${getFrontendBaseUrl()}/login-success`);
   }
 );
 
