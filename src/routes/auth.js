@@ -8,7 +8,6 @@ const saltRounds = 10;
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
 require("../lib/passport");
-const { setTokenCookie, clearTokenCookie } = require("../utils/token");
 const { getFrontendBaseUrl } = require("../utils/environment");
 
 // Initialize Passport
@@ -16,7 +15,7 @@ router.use(passport.initialize());
 
 /**
  * @route   POST /api/auth/login
- * @desc    Login user
+ * @desc    Login user and return JWT
  */
 router.post("/login", async (req, res) => {
   try {
@@ -28,10 +27,9 @@ router.post("/login", async (req, res) => {
     if (!isValid) return res.status(401).send("Invalid password");
 
     const token = await user.getJWT();
-    setTokenCookie(res, token);
 
     const { password: _, ...userData } = user.toObject();
-    res.status(200).json({ message: "Logged in", user: userData });
+    res.status(200).json({ message: "Logged in", user: userData, token });
   } catch (err) {
     res.status(400).send("Error: " + err.message);
   }
@@ -39,15 +37,10 @@ router.post("/login", async (req, res) => {
 
 /**
  * @route   POST /api/auth/logout
- * @desc    Logout user
+ * @desc    Dummy logout (frontend clears localStorage)
  */
-router.post("/logout", (req, res) => {
-  try {
-    clearTokenCookie(res);
-    res.status(200).send("Logged out successfully");
-  } catch (error) {
-    res.status(400).send("Error: " + error.message);
-  }
+router.post("/logout", (_req, res) => {
+  res.status(200).send("Logged out successfully");
 });
 
 /**
@@ -65,16 +58,13 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ error: validationError.message });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email: otherData.email });
     if (existingUser) {
       return res.status(409).json({ error: "Email already registered." });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Save new user
     const user = new User({ ...otherData, password: hashedPassword });
     await user.save();
 
@@ -87,7 +77,7 @@ router.post("/register", async (req, res) => {
 
 /**
  * @route   POST /api/auth/change-password
- * @desc    Change Password
+ * @desc    Change user password
  */
 router.post("/change-password", authMiddleware, async (req, res) => {
   try {
@@ -98,7 +88,7 @@ router.post("/change-password", authMiddleware, async (req, res) => {
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) return res.status(400).send("Old password is incorrect");
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = await bcrypt.hash(newPassword, saltRounds);
     await user.save();
 
     res.send("Password updated successfully");
@@ -123,12 +113,8 @@ router.get(
     failureRedirect: "/login",
   }),
   (req, res) => {
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
-    setTokenCookie(res, token);
-    res.redirect(`${getFrontendBaseUrl()}/login-success`);
+    const token = req.user.getJWT();
+    res.redirect(`${getFrontendBaseUrl()}/login-success?token=${token}`);
   }
 );
 
@@ -142,11 +128,8 @@ router.get(
     failureRedirect: "/login",
   }),
   (req, res) => {
-    const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-    setTokenCookie(res, token);
-    res.redirect(`${getFrontendBaseUrl()}/login-success`);
+    const token = req.user.getJWT();
+    res.redirect(`${getFrontendBaseUrl()}/login-success?token=${token}`);
   }
 );
 

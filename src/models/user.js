@@ -88,9 +88,16 @@ userSchema.pre("save", async function (next) {
 
 //  JWT generator method
 userSchema.methods.getJWT = function () {
-  return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.RESET_TOKEN_EXPIRATION || "7d",
-  });
+  return jwt.sign(
+    {
+      id: this._id,
+      email: this.email,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRATION || "7d",
+    }
+  );
 };
 
 //  Password validation
