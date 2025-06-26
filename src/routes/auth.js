@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const saltRounds = 10;
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-require("../config/passport");
+require("../lib/passport");
 const { setTokenCookie, clearTokenCookie } = require("../utils/token");
 
 // Initialize Passport
@@ -125,16 +125,18 @@ router.get(
     const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
+
     setTokenCookie(res, token);
 
     const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [];
     const origin = req.get("Origin");
+
     const redirectBase =
       origin && allowedOrigins.includes(origin)
         ? origin
         : "http://localhost:4200";
 
-    res.redirect(`${redirectBase}/login-success?token=${token}`);
+    res.redirect(`${redirectBase}/login-success`);
   }
 );
 
@@ -160,7 +162,7 @@ router.get(
         ? origin
         : "http://localhost:4200";
 
-    res.redirect(`${redirectBase}/login-success?token=${token}`);
+    res.redirect(`${redirectBase}/login-success`);
   }
 );
 

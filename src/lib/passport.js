@@ -53,7 +53,7 @@ passport.use(
 );
 
 const linkedinCallbackUrl = new URL(
-  process.env.LINKEDIN__CALLBACK_URL,
+  process.env.LINKEDIN_CALLBACK_URL,
   getBackendBaseUrl()
 ).href;
 
