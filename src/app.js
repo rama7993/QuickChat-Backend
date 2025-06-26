@@ -15,6 +15,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middlewares
+app.use(configureCors());
 app.use((req, res, next) => {
   console.log("🌍 Origin:", req.headers.origin);
   console.log("🍪 Cookie:", req.headers.cookie);
@@ -23,13 +24,14 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(configureCors());
 
-// HTTP Server
+// HTTP Server + Socket.IO with CORS
 const server = http.createServer(app);
-// Socket.IO Server
 const io = socketIO(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()),
+    credentials: true,
+  },
 });
 require("./lib/socket")(io);
 
@@ -38,20 +40,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
+// Register routes
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/messages", chatRouter);
 app.use("/api/groups", groupRouter);
 
-// DB connection + server start
+//  Connect to DB and start server
 connectDB()
   .then(() => {
     console.log("Connected to MongoDB");
     server.listen(port, () => {
-      console.log(`Server running on port ${port}`);
+      console.log(`🚀 Server running on port ${port}`);
     });
   })
   .catch((err) => {
-    console.error("DB connection error:", err);
+    console.error("❌ DB connection error:", err);
   });
