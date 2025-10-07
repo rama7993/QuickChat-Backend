@@ -17,7 +17,8 @@ const authMiddleware = async (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, SECRET_KEY);
-    const { id: userId } = decoded;
+    // Extract userId from token (supports both userId and id fields)
+    const userId = decoded.userId || decoded.id;
 
     // Find the user by ID
     const user = await User.findById(userId);
@@ -29,7 +30,7 @@ const authMiddleware = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error("Auth error:", error.message);
+    // console.error("Auth error:", error.message); // Commented for production
     return res.status(401).send("Invalid token or user not authenticated.");
   }
 };

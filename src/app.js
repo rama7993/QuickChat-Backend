@@ -6,24 +6,24 @@ const connectDB = require("./config/database");
 const cookieParser = require("cookie-parser");
 const { configureCors } = require("./utils/environment");
 
+// Import passport configuration
+const passport = require("passport");
+require("./lib/passport");
+
 const authRouter = require("./routes/auth");
 const usersRouter = require("./routes/users");
 const chatRouter = require("./routes/messages");
 const groupRouter = require("./routes/groups");
+const notificationRouter = require("./routes/notifications");
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middlewares
 app.use(configureCors());
-app.use((req, res, next) => {
-  console.log("🌍 Origin:", req.headers.origin);
-  console.log("🍪 Cookie:", req.headers.cookie);
-  next();
-});
-
 app.use(express.json());
 app.use(cookieParser());
+app.use(passport.initialize());
 
 // HTTP Server + Socket.IO with CORS
 const server = http.createServer(app);
@@ -45,6 +45,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/messages", chatRouter);
 app.use("/api/groups", groupRouter);
+app.use("/api/notifications", notificationRouter);
 
 //  Connect to DB and start server
 connectDB()

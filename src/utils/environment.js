@@ -10,7 +10,7 @@ const getBackendBaseUrl = () => {
     console.warn("⚠️ BACKEND_BASE_URL is not properly set.");
   }
 
-  return selected || "";
+  return selected || "http://localhost:3000";
 };
 
 const getFrontendBaseUrl = () => {
@@ -23,7 +23,7 @@ const getFrontendBaseUrl = () => {
     console.warn("⚠️ CORS_ORIGIN is not properly set.");
   }
 
-  return selected || "";
+  return selected || "http://localhost:4200";
 };
 
 const configureCors = () => {

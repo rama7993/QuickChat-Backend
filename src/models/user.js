@@ -73,6 +73,104 @@ const userSchema = new Schema(
       type: Boolean,
       default: true,
     },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: ["online", "away", "busy", "offline"],
+      default: "offline",
+    },
+    statusMessage: {
+      type: String,
+      maxlength: 100,
+      default: "",
+    },
+    notificationSettings: {
+      emailNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      pushNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      soundNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      messagePreview: {
+        type: Boolean,
+        default: true,
+      },
+      groupNotifications: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    privacySettings: {
+      showLastSeen: {
+        type: Boolean,
+        default: true,
+      },
+      showStatus: {
+        type: Boolean,
+        default: true,
+      },
+      allowGroupInvites: {
+        type: Boolean,
+        default: true,
+      },
+      allowFriendRequests: {
+        type: Boolean,
+        default: true,
+      },
+    },
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    friendRequests: [
+      {
+        from: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        status: {
+          type: String,
+          enum: ["pending", "accepted", "rejected"],
+          default: "pending",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    preferences: {
+      theme: {
+        type: String,
+        enum: ["light", "dark", "auto"],
+        default: "auto",
+      },
+      language: {
+        type: String,
+        default: "en",
+      },
+      timezone: {
+        type: String,
+        default: "UTC",
+      },
+    },
   },
   { timestamps: true }
 );
@@ -90,10 +188,12 @@ userSchema.pre("save", async function (next) {
 userSchema.methods.getJWT = function () {
   return jwt.sign(
     {
-      id: this._id,
+      userId: this._id,
+      id: this._id, // Keep both for compatibility
       email: this.email,
     },
-    process.env.JWT_SECRET,
+    process.env.JWT_SECRET ||
+      "your-super-secret-jwt-key-change-this-in-production",
     {
       expiresIn: process.env.JWT_EXPIRATION || "7d",
     }
