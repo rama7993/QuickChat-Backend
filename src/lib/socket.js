@@ -209,6 +209,7 @@ module.exports = (io) => {
 
         // Emit progress updates
         socket.emit(`upload_progress_${uploadId}`, 50);
+        socket.emit(`upload_progress_${uploadId}`, 75);
         socket.emit(`upload_progress_${uploadId}`, 100);
 
         // Create message record in database
@@ -217,21 +218,45 @@ module.exports = (io) => {
         // Use the isGroupChat parameter to determine message type
         const isGroupMessage = isGroupChat || roomId.startsWith("group_");
 
+        // Create appropriate content based on file type
+        let content = "";
+        let messageTypeForDB = messageType;
+
+        switch (messageType) {
+          case "image":
+            content = `📷 Image: ${fileName}`;
+            messageTypeForDB = "image";
+            break;
+          case "video":
+            content = `🎥 Video: ${fileName}`;
+            messageTypeForDB = "video";
+            break;
+          case "audio":
+            content = `🎤 Voice Message: ${fileName}`;
+            messageTypeForDB = "voice";
+            break;
+          case "file":
+            content = `📄 File: ${fileName}`;
+            messageTypeForDB = "file";
+            break;
+          default:
+            content = `📎 File: ${fileName}`;
+            messageTypeForDB = "file";
+        }
+
         const newMessage = new Message({
           sender: socket.userId,
           receiver: isGroupMessage ? null : roomId,
           group: isGroupMessage ? roomId.replace("group_", "") : null,
-          content: `Voice message (${Math.round(
-            uploadResult.fileSize / 1000
-          )}KB)`,
-          messageType: "voice",
+          content: content,
+          messageType: messageTypeForDB,
           attachments: [
             {
-              type: "voice",
+              type: messageTypeForDB,
               url: uploadResult.fileUrl,
               filename: uploadResult.fileName,
               size: uploadResult.fileSize,
-              mimeType: fileType || "audio/webm",
+              mimeType: fileType,
             },
           ],
           timestamp: new Date(),
@@ -266,10 +291,17 @@ module.exports = (io) => {
           messageId: savedMessage._id,
         });
 
+        console.log(
+          `File upload completed: ${fileName} -> ${uploadResult.fileUrl}`
+        );
         // File upload completed successfully
       } catch (error) {
+        console.error("File upload error:", error);
         if (uploadId) {
-          socket.emit(`upload_error_${uploadId}`, { message: error.message });
+          socket.emit(`upload_error_${uploadId}`, {
+            message: error.message || "Upload failed",
+            error: error,
+          });
         }
       }
     });
@@ -425,69 +457,27 @@ module.exports = (io) => {
 
       const buffer = Buffer.from(base64Data, "base64");
 
-      // Upload to Cloudinary or fallback to local storage
-      const {
-        getFileType,
-        cloudinary,
-        isCloudinaryConfigured,
-      } = require("../utils/fileUpload");
+      // Upload to Cloudinary
+      const { getFileType, cloudinary } = require("../utils/fileUpload");
 
-      let fileUrl;
-
-      if (isCloudinaryConfigured) {
-        try {
-          const result = await new Promise((resolve, reject) => {
-            cloudinary.uploader
-              .upload_stream(
-                {
-                  folder: "quickchat/uploads",
-                  resource_type: "auto",
-                  public_id: `${Date.now()}_${Math.round(Math.random() * 1e9)}`,
-                },
-                (error, result) => {
-                  if (error) reject(error);
-                  else resolve(result);
-                }
-              )
-              .end(buffer);
-          });
-
-          fileUrl = result.secure_url;
-        } catch (cloudinaryError) {
-          // Fallback to local storage
-          const fs = require("fs");
-          const path = require("path");
-
-          const uploadDir = path.join(__dirname, "../../uploads");
-          if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-          }
-
-          const tempFileName = `${Date.now()}-${fileName || "upload"}`;
-          const filePath = path.join(uploadDir, tempFileName);
-          fs.writeFileSync(filePath, buffer);
-
-          fileUrl = `/uploads/${tempFileName}`;
-        }
-      } else {
-        // Use local storage
-        const fs = require("fs");
-        const path = require("path");
-
-        const uploadDir = path.join(__dirname, "../../uploads");
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-
-        const tempFileName = `${Date.now()}-${fileName || "upload"}`;
-        const filePath = path.join(uploadDir, tempFileName);
-        fs.writeFileSync(filePath, buffer);
-
-        fileUrl = `/uploads/${tempFileName}`;
-      }
+      const result = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: "quickchat/uploads",
+              resource_type: "auto",
+              public_id: `${Date.now()}_${Math.round(Math.random() * 1e9)}`,
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          )
+          .end(buffer);
+      });
 
       return {
-        fileUrl: fileUrl,
+        fileUrl: result.secure_url,
         fileName: fileName || "upload",
         fileSize: fileSize,
         fileType: getFileType(fileType || "application/octet-stream"),

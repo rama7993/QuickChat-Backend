@@ -2,6 +2,7 @@ require("dotenv").config();
 const http = require("http");
 const socketIO = require("socket.io");
 const express = require("express");
+const path = require("path");
 const connectDB = require("./config/database");
 const cookieParser = require("cookie-parser");
 const { configureCors } = require("./utils/environment");
@@ -15,6 +16,7 @@ const usersRouter = require("./routes/users");
 const chatRouter = require("./routes/messages");
 const groupRouter = require("./routes/groups");
 const notificationRouter = require("./routes/notifications");
+const uploadRouter = require("./routes/upload");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -46,6 +48,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/messages", chatRouter);
 app.use("/api/groups", groupRouter);
 app.use("/api/notifications", notificationRouter);
+app.use("/api/upload", uploadRouter);
 
 //  Connect to DB and start server
 connectDB()

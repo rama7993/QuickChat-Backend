@@ -30,6 +30,11 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
+    phone: {
+      type: String,
+      trim: true,
+      match: [/^[\+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number"],
+    },
     provider: {
       type: String,
       enum: ["local", "google", "linkedin"],
@@ -115,6 +120,10 @@ const userSchema = new Schema(
         default: true,
       },
       showStatus: {
+        type: Boolean,
+        default: true,
+      },
+      showOnlineStatus: {
         type: Boolean,
         default: true,
       },

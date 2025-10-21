@@ -3,17 +3,7 @@ const router = express.Router();
 const Message = require("../models/message");
 const Group = require("../models/groups");
 const Notification = require("../models/notification");
-const {
-  getFileType,
-  formatFileSize,
-  generateImageThumbnail,
-  generateVideoThumbnail,
-  getVideoDuration,
-  getAudioDuration,
-  compressImage,
-  compressVideo,
-  cloudinary,
-} = require("../utils/fileUpload");
+const { getFileType, cloudinary } = require("../utils/fileUpload");
 const { authMiddleware } = require("../middlewares/auth");
 
 // Apply auth middleware to all routes
