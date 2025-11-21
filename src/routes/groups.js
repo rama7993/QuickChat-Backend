@@ -53,7 +53,8 @@ router.post("/", async (req, res) => {
           "group_invite",
           "Added to Group",
           `You have been added to the group "${name}"`,
-          { groupId: group._id, createdBy }
+          { groupId: group._id, createdBy },
+          req.io
         )
       );
 
@@ -188,7 +189,8 @@ router.post("/:groupId/members", async (req, res) => {
         "group_invite",
         "Added to Group",
         `You have been added to the group "${group.name}"`,
-        { groupId: group._id, addedBy: req.user._id }
+        { groupId: group._id, addedBy: req.user._id },
+        req.io
       )
     );
 

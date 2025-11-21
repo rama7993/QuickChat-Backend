@@ -1,7 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const { authMiddleware } = require("../middlewares/auth");
-const { cloudinary } = require("../utils/fileUpload");
+const { cloudinary, isCloudinaryConfigured } = require("../utils/fileUpload");
 
 const router = express.Router();
 
@@ -53,6 +53,15 @@ router.post(
         });
       }
 
+      // Check if Cloudinary is configured
+      if (!isCloudinaryConfigured) {
+        return res.status(503).json({
+          error: "Service Unavailable",
+          message:
+            "File upload service is not configured. Please contact support.",
+        });
+      }
+
       // Upload to Cloudinary
       const result = await new Promise((resolve, reject) => {
         cloudinary.uploader
@@ -67,8 +76,31 @@ router.post(
               ],
             },
             (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
+              if (error) {
+                console.error("Cloudinary upload error:", error);
+                // Provide helpful error messages
+                if (
+                  error.message &&
+                  error.message.includes("Invalid Signature")
+                ) {
+                  reject(
+                    new Error(
+                      "Cloudinary authentication failed. Please check your API credentials."
+                    )
+                  );
+                } else if (
+                  error.message &&
+                  error.message.includes("Invalid cloud_name")
+                ) {
+                  reject(
+                    new Error("Invalid Cloudinary cloud name configuration.")
+                  );
+                } else {
+                  reject(error);
+                }
+              } else {
+                resolve(result);
+              }
             }
           )
           .end(file.buffer);

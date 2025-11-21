@@ -180,6 +180,14 @@ const userSchema = new Schema(
         default: "UTC",
       },
     },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -195,18 +203,12 @@ userSchema.pre("save", async function (next) {
 
 //  JWT generator method
 userSchema.methods.getJWT = function () {
-  return jwt.sign(
-    {
-      userId: this._id,
-      id: this._id, // Keep both for compatibility
-      email: this.email,
-    },
-    process.env.JWT_SECRET ||
-      "your-super-secret-jwt-key-change-this-in-production",
-    {
-      expiresIn: process.env.JWT_EXPIRATION || "7d",
-    }
-  );
+  const { signToken } = require("../utils/jwt");
+  return signToken({
+    userId: this._id,
+    id: this._id, // Keep both for compatibility
+    email: this.email,
+  });
 };
 
 //  Password validation

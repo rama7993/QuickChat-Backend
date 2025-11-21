@@ -78,7 +78,8 @@ notificationSchema.statics.createNotification = async function (
   type,
   title,
   message,
-  data = {}
+  data = {},
+  io = null
 ) {
   const notification = new this({
     user: userId,
@@ -88,7 +89,18 @@ notificationSchema.statics.createNotification = async function (
     data,
   });
 
-  return await notification.save();
+  const savedNotification = await notification.save();
+
+  // Emit socket event if io is provided
+  if (io && userId) {
+    const populatedNotification = await this.findById(savedNotification._id)
+      .populate("data.senderId", "firstName lastName photoUrl")
+      .populate("data.groupId", "name avatar");
+
+    io.to(userId.toString()).emit("new_notification", populatedNotification);
+  }
+
+  return savedNotification;
 };
 
 module.exports = mongoose.model("Notification", notificationSchema);

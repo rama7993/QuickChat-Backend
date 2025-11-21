@@ -30,16 +30,46 @@ const configureCors = () => {
   const allowedOrigins =
     process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()) || [];
 
+  // Default allowed origins for development
+  const defaultOrigins = [
+    "http://localhost:4200",
+    "http://localhost:3000",
+    "http://127.0.0.1:4200",
+    "http://127.0.0.1:3000",
+  ];
+
+  // Combine environment origins with defaults (remove duplicates)
+  const allAllowedOrigins = [
+    ...new Set([...allowedOrigins, ...defaultOrigins]),
+  ];
+
   return cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check if origin is in allowed list
+      if (allAllowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.warn(`❌ Blocked by CORS: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
+        // In development, be more permissive
+        if (process.env.NODE_ENV === "development") {
+          console.warn(`⚠️ Allowing CORS for ${origin} in development mode`);
+          callback(null, true);
+        } else {
+          console.warn(`❌ Blocked by CORS: ${origin}`);
+          callback(new Error("Not allowed by CORS"));
+        }
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 };
 

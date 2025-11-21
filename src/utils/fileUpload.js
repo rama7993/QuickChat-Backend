@@ -1,5 +1,23 @@
 const cloudinary = require("cloudinary").v2;
 
+// Validate Cloudinary configuration
+const validateCloudinaryConfig = () => {
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
+  const api_key = process.env.CLOUDINARY_API_KEY;
+  const api_secret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!cloud_name || !api_key || !api_secret) {
+    console.warn(
+      "⚠️  Cloudinary credentials not configured. File uploads will fail."
+    );
+    console.warn(
+      "Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file"
+    );
+    return false;
+  }
+
+  return true;
+};
 
 // Configure Cloudinary - Required for file uploads
 const cloudinaryConfig = {
@@ -8,8 +26,15 @@ const cloudinaryConfig = {
   api_secret: process.env.CLOUDINARY_API_SECRET,
 };
 
-// Configure Cloudinary
-cloudinary.config(cloudinaryConfig);
+// Only configure if credentials are present
+const isCloudinaryConfigured = validateCloudinaryConfig();
+if (isCloudinaryConfigured) {
+  cloudinary.config(cloudinaryConfig);
+} else {
+  console.error(
+    "❌ Cloudinary not configured. File uploads will not work until credentials are set."
+  );
+}
 
 // File type validation
 const allowedImageTypes = [
@@ -65,4 +90,6 @@ module.exports = {
   allowedVideoTypes,
   allowedAudioTypes,
   allowedDocumentTypes,
+  isCloudinaryConfigured,
+  validateCloudinaryConfig,
 };

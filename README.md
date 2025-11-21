@@ -107,6 +107,10 @@ The server will start on `http://localhost:3000` (or the port specified in your 
 - `mark_message_read` - Mark message as read
 - `update_message` - Update message
 - `delete_message` - Delete message
+- `video_call_offer` - Send video call offer
+- `video_call_answer` - Send video call answer
+- `video_call_ice_candidate` - Send ICE candidate
+- `video_call_end` - End video call
 
 ### Server to Client
 - `authenticated` - User authenticated
@@ -119,6 +123,11 @@ The server will start on `http://localhost:3000` (or the port specified in your 
 - `user_offline` - User went offline
 - `online_users` - List of online users
 - `load_messages` - Load recent messages
+- `new_notification` - New notification received
+- `video_call_offer` - Video call offer received
+- `video_call_answer` - Video call answer received
+- `video_call_ice_candidate` - ICE candidate for WebRTC
+- `video_call_ended` - Video call ended
 
 ## Environment Variables
 
@@ -136,13 +145,20 @@ The server will start on `http://localhost:3000` (or the port specified in your 
 
 ## File Uploads
 
-The application supports file uploads through Socket.IO. Files are uploaded as base64 and can be stored either locally or on Cloudinary (if configured).
+The application supports file uploads through Socket.IO. Files are uploaded as base64 and stored on Cloudinary (required for production).
+
+**Required Environment Variables:**
+- `CLOUDINARY_CLOUD_NAME` - Your Cloudinary cloud name
+- `CLOUDINARY_API_KEY` - Your Cloudinary API key
+- `CLOUDINARY_API_SECRET` - Your Cloudinary API secret
 
 Supported file types:
-- Images (jpg, png, gif, etc.)
-- Videos (mp4, webm, etc.)
-- Audio (mp3, wav, webm, etc.)
-- Documents (pdf, doc, txt, etc.)
+- Images (jpg, png, gif, webp, etc.)
+- Videos (mp4, webm, avi, mov, etc.)
+- Audio (mp3, wav, webm, m4a, etc.)
+- Documents (pdf, doc, docx, xls, xlsx, ppt, pptx, txt, zip, rar, etc.)
+
+Files are automatically uploaded to Cloudinary and messages are created in real-time via Socket.IO.
 
 ## Database Schema
 

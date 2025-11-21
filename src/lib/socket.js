@@ -16,11 +16,8 @@ module.exports = (io) => {
         return next(new Error("Authentication error: No token provided"));
       }
 
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET ||
-          "your-super-secret-jwt-key-change-this-in-production"
-      );
+      const { verifyToken } = require("../utils/jwt");
+      const decoded = verifyToken(token);
 
       // Extract userId from token (supports both userId and id fields)
       const userId = decoded.userId || decoded.id;
@@ -187,10 +184,38 @@ module.exports = (io) => {
         } = data;
         uploadId = id;
 
-        // Process file upload
-
+        // Validation
         if (!fileData) {
           throw new Error("No file data received");
+        }
+
+        // Validate file size (max 10MB)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        if (fileSize > MAX_FILE_SIZE) {
+          throw new Error(
+            `File size exceeds maximum limit of ${
+              MAX_FILE_SIZE / (1024 * 1024)
+            }MB`
+          );
+        }
+
+        // Validate file type
+        const {
+          getFileType,
+          allowedImageTypes,
+          allowedVideoTypes,
+          allowedAudioTypes,
+          allowedDocumentTypes,
+        } = require("../utils/fileUpload");
+        const allAllowedTypes = [
+          ...allowedImageTypes,
+          ...allowedVideoTypes,
+          ...allowedAudioTypes,
+          ...allowedDocumentTypes,
+        ];
+
+        if (!allAllowedTypes.includes(fileType)) {
+          throw new Error("File type not allowed");
         }
 
         // Emit initial progress
@@ -218,31 +243,13 @@ module.exports = (io) => {
         // Use the isGroupChat parameter to determine message type
         const isGroupMessage = isGroupChat || roomId.startsWith("group_");
 
-        // Create appropriate content based on file type
-        let content = "";
-        let messageTypeForDB = messageType;
+        // Use message helpers for content formatting
+        const { formatMessageContent } = require("../utils/messageHelpers");
 
-        switch (messageType) {
-          case "image":
-            content = `📷 Image: ${fileName}`;
-            messageTypeForDB = "image";
-            break;
-          case "video":
-            content = `🎥 Video: ${fileName}`;
-            messageTypeForDB = "video";
-            break;
-          case "audio":
-            content = `🎤 Voice Message: ${fileName}`;
-            messageTypeForDB = "voice";
-            break;
-          case "file":
-            content = `📄 File: ${fileName}`;
-            messageTypeForDB = "file";
-            break;
-          default:
-            content = `📎 File: ${fileName}`;
-            messageTypeForDB = "file";
-        }
+        // Create appropriate content based on file type
+        const content = formatMessageContent(messageType, fileName, fileSize);
+        const messageTypeForDB =
+          messageType === "audio" ? "voice" : messageType;
 
         const newMessage = new Message({
           sender: socket.userId,
@@ -298,9 +305,30 @@ module.exports = (io) => {
       } catch (error) {
         console.error("File upload error:", error);
         if (uploadId) {
+          // Provide user-friendly error message
+          let errorMessage = "File upload failed";
+
+          if (error.message) {
+            if (error.message.includes("Cloudinary")) {
+              errorMessage = error.message;
+            } else if (error.message.includes("not configured")) {
+              errorMessage =
+                "File upload service is not configured. Please contact support.";
+            } else if (error.message.includes("File size exceeds")) {
+              errorMessage = error.message;
+            } else if (error.message.includes("File type not allowed")) {
+              errorMessage = "This file type is not supported.";
+            } else {
+              errorMessage = `Upload failed: ${error.message}`;
+            }
+          }
+
           socket.emit(`upload_error_${uploadId}`, {
-            message: error.message || "Upload failed",
-            error: error,
+            message: errorMessage,
+            error: {
+              name: error.name || "UploadError",
+              message: error.message || "Unknown error",
+            },
           });
         }
       }
@@ -390,6 +418,64 @@ module.exports = (io) => {
       }
     });
 
+    // Video call events
+    socket.on(
+      "video_call_offer",
+      async ({ roomId, offer, callerId, receiverId }) => {
+        try {
+          // Forward the offer to the receiver
+          io.to(receiverId).emit("video_call_offer", {
+            roomId,
+            offer,
+            callerId,
+          });
+        } catch (error) {
+          socket.emit("error", { message: "Failed to send video call offer" });
+        }
+      }
+    );
+
+    socket.on("video_call_answer", async ({ roomId, answer, receiverId }) => {
+      try {
+        // Forward the answer to the caller
+        io.to(receiverId).emit("video_call_answer", {
+          roomId,
+          answer,
+          receiverId: socket.userId,
+        });
+      } catch (error) {
+        socket.emit("error", { message: "Failed to send video call answer" });
+      }
+    });
+
+    socket.on(
+      "video_call_ice_candidate",
+      async ({ roomId, candidate, receiverId }) => {
+        try {
+          // Forward ICE candidate to the other peer
+          io.to(receiverId).emit("video_call_ice_candidate", {
+            roomId,
+            candidate,
+            senderId: socket.userId,
+          });
+        } catch (error) {
+          socket.emit("error", { message: "Failed to send ICE candidate" });
+        }
+      }
+    );
+
+    socket.on("video_call_end", async ({ roomId, userId }) => {
+      try {
+        // Notify all participants that the call has ended
+        io.to(roomId).emit("video_call_ended", {
+          roomId,
+          endedBy: userId,
+        });
+      } catch (error) {
+        socket.emit("error", { message: "Failed to end video call" });
+      }
+    });
+
     // Handle user disconnection
     socket.on("disconnect", () => {
       // Remove from active users
@@ -447,6 +533,19 @@ module.exports = (io) => {
     messageType
   ) {
     try {
+      const {
+        getFileType,
+        cloudinary,
+        isCloudinaryConfigured,
+      } = require("../utils/fileUpload");
+
+      // Check if Cloudinary is configured
+      if (!isCloudinaryConfigured) {
+        throw new Error(
+          "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables."
+        );
+      }
+
       // Convert base64 to buffer
       let base64Data;
       if (fileData.includes(",")) {
@@ -457,24 +556,61 @@ module.exports = (io) => {
 
       const buffer = Buffer.from(base64Data, "base64");
 
-      // Upload to Cloudinary
-      const { getFileType, cloudinary } = require("../utils/fileUpload");
+      // Validate buffer
+      if (!buffer || buffer.length === 0) {
+        throw new Error("Invalid file data: empty buffer");
+      }
 
+      // Upload to Cloudinary
       const result = await new Promise((resolve, reject) => {
+        const uploadOptions = {
+          folder: "quickchat/uploads",
+          resource_type: "auto",
+          public_id: `${Date.now()}_${Math.round(Math.random() * 1e9)}`,
+        };
+
         cloudinary.uploader
-          .upload_stream(
-            {
-              folder: "quickchat/uploads",
-              resource_type: "auto",
-              public_id: `${Date.now()}_${Math.round(Math.random() * 1e9)}`,
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
+          .upload_stream(uploadOptions, (error, result) => {
+            if (error) {
+              console.error("Cloudinary upload error:", error);
+              // Provide more helpful error messages
+              if (
+                error.message &&
+                error.message.includes("Invalid Signature")
+              ) {
+                reject(
+                  new Error(
+                    "Cloudinary authentication failed. Please check your CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET environment variables."
+                  )
+                );
+              } else if (
+                error.message &&
+                error.message.includes("Invalid cloud_name")
+              ) {
+                reject(
+                  new Error(
+                    "Invalid Cloudinary cloud name. Please check your CLOUDINARY_CLOUD_NAME environment variable."
+                  )
+                );
+              } else {
+                reject(
+                  new Error(
+                    `Cloudinary upload failed: ${
+                      error.message || "Unknown error"
+                    }`
+                  )
+                );
+              }
+            } else {
+              resolve(result);
             }
-          )
+          })
           .end(buffer);
       });
+
+      if (!result || !result.secure_url) {
+        throw new Error("Upload succeeded but no URL returned from Cloudinary");
+      }
 
       return {
         fileUrl: result.secure_url,
@@ -483,6 +619,12 @@ module.exports = (io) => {
         fileType: getFileType(fileType || "application/octet-stream"),
       };
     } catch (error) {
+      console.error("File upload error details:", {
+        fileName,
+        fileSize,
+        fileType,
+        error: error.message,
+      });
       throw error;
     }
   }

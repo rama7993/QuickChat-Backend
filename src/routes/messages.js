@@ -5,19 +5,27 @@ const Group = require("../models/groups");
 const Notification = require("../models/notification");
 const { getFileType, cloudinary } = require("../utils/fileUpload");
 const { authMiddleware } = require("../middlewares/auth");
+const {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+} = require("../utils/response");
+const { asyncHandler } = require("../utils/errorHandler");
 
 // Apply auth middleware to all routes
 router.use(authMiddleware);
 
 // GET messages between two users with pagination
-router.get("/private/:userId", async (req, res) => {
-  const { userId } = req.params;
-  const currentUserId = req.user._id;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 50;
-  const skip = (page - 1) * limit;
+router.get(
+  "/private/:userId",
+  asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
 
-  try {
     const messages = await Message.find({
       $or: [
         { sender: currentUserId, receiver: userId },
@@ -31,7 +39,8 @@ router.get("/private/:userId", async (req, res) => {
       .populate("sender", "firstName lastName photoUrl")
       .populate("receiver", "firstName lastName photoUrl")
       .populate("replyTo", "content sender")
-      .populate("reactions.user", "firstName lastName");
+      .populate("reactions.user", "firstName lastName")
+      .lean();
 
     // Mark messages as read
     await Message.updateMany(
@@ -46,25 +55,23 @@ router.get("/private/:userId", async (req, res) => {
       }
     );
 
-    res.json(messages.reverse());
-  } catch (err) {
-    console.error("Failed to fetch messages:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+    sendSuccess(res, messages.reverse(), "Messages retrieved successfully");
+  })
+);
 
 // GET group messages with pagination
-router.get("/group/:groupId", async (req, res) => {
-  const { groupId } = req.params;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 50;
-  const skip = (page - 1) * limit;
+router.get(
+  "/group/:groupId",
+  asyncHandler(async (req, res) => {
+    const { groupId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
 
-  try {
     // Check if user is member of group
     const group = await Group.findById(groupId);
     if (!group || !group.members.includes(req.user._id)) {
-      return res.status(403).json({ error: "Access denied" });
+      return sendError(res, "Access denied", 403);
     }
 
     const messages = await Message.find({
@@ -76,26 +83,48 @@ router.get("/group/:groupId", async (req, res) => {
       .limit(limit)
       .populate("sender", "firstName lastName photoUrl")
       .populate("replyTo", "content sender")
-      .populate("reactions.user", "firstName lastName");
+      .populate("reactions.user", "firstName lastName")
+      .lean();
 
-    res.json(messages.reverse());
-  } catch (err) {
-    console.error("Failed to fetch group messages:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+    sendSuccess(
+      res,
+      messages.reverse(),
+      "Group messages retrieved successfully"
+    );
+  })
+);
 
 // POST send private message
-router.post("/private", async (req, res) => {
-  const { receiverId, content, replyTo } = req.body;
-  const senderId = req.user._id;
+router.post(
+  "/private",
+  asyncHandler(async (req, res) => {
+    const { receiverId, content, replyTo } = req.body;
+    const senderId = req.user._id;
 
-  try {
+    // Validation
+    if (!receiverId) {
+      return sendValidationError(res, "Receiver ID is required");
+    }
+
+    if (!content && !replyTo) {
+      return sendValidationError(res, "Message content is required");
+    }
+
+    // Validate receiverId is a valid ObjectId
+    if (!require("mongoose").Types.ObjectId.isValid(receiverId)) {
+      return sendValidationError(res, "Invalid receiver ID format");
+    }
+
+    // Check if user is trying to message themselves
+    if (senderId.toString() === receiverId) {
+      return sendError(res, "Cannot send message to yourself", 400);
+    }
+
     const message = new Message({
       sender: senderId,
       receiver: receiverId,
-      content,
-      replyTo,
+      content: content || "",
+      replyTo: replyTo || null,
       messageType: "text",
     });
 
@@ -112,30 +141,51 @@ router.post("/private", async (req, res) => {
       "message",
       "New Message",
       `You have a new message from ${req.user.firstName}`,
-      { messageId: message._id, senderId }
+      { messageId: message._id, senderId },
+      req.io
     );
 
     // Emit to socket
     req.io.to(receiverId).emit("newMessage", fullMessage);
     req.io.to(senderId).emit("messageSent", fullMessage);
 
-    res.status(201).json(fullMessage);
-  } catch (err) {
-    console.error("Failed to send message:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+    sendSuccess(res, fullMessage, "Message sent successfully", 201);
+  })
+);
 
 // POST send group message
-router.post("/group", async (req, res) => {
-  const { groupId, content, replyTo } = req.body;
-  const senderId = req.user._id;
+router.post(
+  "/group",
+  asyncHandler(async (req, res) => {
+    const { groupId, content, replyTo } = req.body;
+    const senderId = req.user._id;
 
-  try {
+    // Validation
+    if (!groupId) {
+      return sendValidationError(res, "Group ID is required");
+    }
+
+    if (!content && !replyTo) {
+      return sendValidationError(res, "Message content is required");
+    }
+
+    // Validate groupId format
+    if (!require("mongoose").Types.ObjectId.isValid(groupId)) {
+      return sendValidationError(res, "Invalid group ID format");
+    }
+
     // Check if user is member of group
     const group = await Group.findById(groupId);
-    if (!group || !group.members.includes(senderId)) {
-      return res.status(403).json({ error: "Access denied" });
+    if (!group) {
+      return sendNotFound(res, "Group");
+    }
+
+    if (!group.members.includes(senderId)) {
+      return sendError(
+        res,
+        "Access denied. You are not a member of this group.",
+        403
+      );
     }
 
     const message = new Message({
@@ -161,7 +211,8 @@ router.post("/group", async (req, res) => {
           "group_message",
           "New Group Message",
           `${req.user.firstName} sent a message in ${group.name}`,
-          { messageId: message._id, groupId, senderId }
+          { messageId: message._id, groupId, senderId },
+          req.io
         )
       );
 
@@ -172,12 +223,9 @@ router.post("/group", async (req, res) => {
       req.io.to(memberId.toString()).emit("newGroupMessage", fullMessage);
     });
 
-    res.status(201).json(fullMessage);
-  } catch (err) {
-    console.error("Failed to send group message:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+    sendSuccess(res, fullMessage, "Group message sent successfully", 201);
+  })
+);
 
 // File uploads are now handled via Socket.IO for real-time communication
 // See socket.js for the upload_file event handler
@@ -239,6 +287,16 @@ router.put("/:messageId", async (req, res) => {
   const { content } = req.body;
   const userId = req.user._id;
 
+  // Validation
+  if (!content || content.trim().length === 0) {
+    return res.status(400).json({ error: "Message content cannot be empty" });
+  }
+
+  // Validate messageId format
+  if (!require("mongoose").Types.ObjectId.isValid(messageId)) {
+    return res.status(400).json({ error: "Invalid message ID format" });
+  }
+
   try {
     const message = await Message.findById(messageId);
     if (!message) {
@@ -249,7 +307,11 @@ router.put("/:messageId", async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    message.content = content;
+    if (message.deleted) {
+      return res.status(400).json({ error: "Cannot edit deleted message" });
+    }
+
+    message.content = content.trim();
     message.edited = true;
     message.editedAt = new Date();
 
