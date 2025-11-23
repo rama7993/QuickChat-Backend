@@ -6,6 +6,7 @@
 /**
  * Format message content based on type
  */
+function formatMessageContent(messageType, fileName, fileSize) {
   // Return just the filename. The frontend UI will handle showing the file type icon and size.
   return fileName;
 }

@@ -18,6 +18,84 @@ router.use(authMiddleware);
 
 // GET messages between two users with pagination
 router.get(
+  "/conversations",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    // Aggregate private messages
+    const conversations = await Message.aggregate([
+      {
+        $match: {
+          $or: [{ sender: userId }, { receiver: userId }],
+          group: null, // Exclude group messages (handled separately or mixed if needed)
+          deleted: { $ne: true }, // Exclude deleted messages
+        },
+      },
+      {
+        $sort: { timestamp: -1 },
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$sender", userId] },
+              "$receiver",
+              "$sender",
+            ],
+          },
+          lastMessage: { $first: "$$ROOT" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$receiver", userId] },
+                    { $eq: ["$isRead", false] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userDetails",
+        },
+      },
+      {
+        $unwind: "$userDetails",
+      },
+      {
+        $project: {
+          _id: 1,
+          lastMessage: 1,
+          unreadCount: 1,
+          "userDetails.firstName": 1,
+          "userDetails.lastName": 1,
+          "userDetails.username": 1,
+          "userDetails.email": 1,
+          "userDetails.photoUrl": 1,
+          "userDetails.status": 1,
+          "userDetails.lastSeen": 1,
+        },
+      },
+      {
+        $sort: { "lastMessage.timestamp": -1 },
+      },
+    ]);
+
+    res.json(conversations);
+  })
+);
+
+router.get(
   "/private/:userId",
   asyncHandler(async (req, res) => {
     const { userId } = req.params;
@@ -355,21 +433,19 @@ router.delete("/:messageId", async (req, res) => {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    message.deleted = true;
-    message.deletedAt = new Date();
-    message.content = "This message was deleted";
+    await Message.findByIdAndDelete(messageId);
 
-    await message.save();
+    const deletionPayload = { _id: messageId, deleted: true };
 
     // Emit message deletion
     if (message.group) {
       const group = await Group.findById(message.group);
       group.members.forEach((memberId) => {
-        req.io.to(memberId.toString()).emit("messageDeleted", message);
+        req.io.to(memberId.toString()).emit("messageDeleted", deletionPayload);
       });
     } else if (message.receiver) {
-      req.io.to(message.receiver.toString()).emit("messageDeleted", message);
-      req.io.to(message.sender.toString()).emit("messageDeleted", message);
+      req.io.to(message.receiver.toString()).emit("messageDeleted", deletionPayload);
+      req.io.to(message.sender.toString()).emit("messageDeleted", deletionPayload);
     }
 
     res.json({ message: "Message deleted successfully" });
@@ -378,6 +454,95 @@ router.delete("/:messageId", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// DELETE all messages in a conversation (private chat)
+router.delete(
+  "/conversation/:userId",
+  asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+    try {
+      // Delete all messages between current user and the other user
+      const result = await Message.updateMany(
+        {
+          $or: [
+            { sender: currentUserId, receiver: userId },
+            { sender: userId, receiver: currentUserId },
+          ],
+        },
+        {
+          deleted: true,
+          deletedAt: new Date(),
+        }
+      );
+
+      // Emit deletion event to both users
+      req.io.to(currentUserId.toString()).emit("conversationDeleted", {
+        userId: userId,
+      });
+      req.io.to(userId.toString()).emit("conversationDeleted", {
+        userId: currentUserId,
+      });
+
+      sendSuccess(res, {
+        message: "Conversation deleted successfully",
+        deletedCount: result.modifiedCount,
+      });
+    } catch (err) {
+      console.error("Failed to delete conversation:", err);
+      sendError(res, "Failed to delete conversation", 500);
+    }
+  })
+);
+
+// DELETE all messages in a group
+router.delete(
+  "/group/:groupId",
+  asyncHandler(async (req, res) => {
+    const { groupId } = req.params;
+    const currentUserId = req.user._id;
+
+    try {
+      // Check if user is a member of the group
+      const group = await Group.findById(groupId);
+      if (!group) {
+        return sendNotFound(res, "Group not found");
+      }
+
+      const isMember = group.members.some(
+        (member) => member.toString() === currentUserId.toString()
+      );
+      if (!isMember) {
+        return sendError(res, "Access denied", 403);
+      }
+
+      // Delete all messages in the group
+      const result = await Message.updateMany(
+        { group: groupId },
+        {
+          deleted: true,
+          deletedAt: new Date(),
+        }
+      );
+
+      // Emit deletion event to all group members
+      group.members.forEach((memberId) => {
+        req.io.to(memberId.toString()).emit("conversationDeleted", {
+          groupId: groupId,
+        });
+      });
+
+      sendSuccess(res, {
+        message: "Group conversation deleted successfully",
+        deletedCount: result.modifiedCount,
+      });
+    } catch (err) {
+      console.error("Failed to delete group conversation:", err);
+      sendError(res, "Failed to delete group conversation", 500);
+    }
+  })
+);
 
 // GET search messages
 router.get("/search/:query", async (req, res) => {
