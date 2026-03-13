@@ -18,14 +18,12 @@ const validateEnvironment = () => {
   const missing = [];
   const warnings = [];
 
-  // Check required variables
   for (const [key, value] of Object.entries(required)) {
     if (!value) {
       missing.push(key);
     }
   }
 
-  // Check for default/placeholder values
   if (
     required.JWT_SECRET ===
     "your-super-secret-jwt-key-change-this-in-production"
@@ -35,7 +33,6 @@ const validateEnvironment = () => {
     );
   }
 
-  // Check optional but recommended
   if (!process.env.CORS_ORIGIN) {
     warnings.push(
       "CORS_ORIGIN not set. Defaulting to allow all origins (not recommended for production)"

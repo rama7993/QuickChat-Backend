@@ -5,7 +5,6 @@ const User = require("../models/user");
 const { getBackendBaseUrl } = require("../utils/environment");
 const { URL } = require("url");
 
-// Only configure OAuth if environment variables are set
 if (
   process.env.GOOGLE_CLIENT_ID &&
   process.env.GOOGLE_CLIENT_SECRET &&
@@ -31,7 +30,6 @@ if (
           });
 
           if (!user) {
-            // Optional: Check for existing email to link account
             user = await User.findOne({ email: profile.emails[0].value });
             if (user) {
               user.provider = "google";
@@ -57,12 +55,8 @@ if (
     )
   );
 } else {
-  // console.log(
-  //   "⚠️  Google OAuth not configured - missing environment variables"
-  // ); // Commented for production
 }
 
-// Only configure LinkedIn OAuth if environment variables are set
 if (
   process.env.LINKEDIN_CLIENT_ID &&
   process.env.LINKEDIN_CLIENT_SECRET &&
@@ -106,7 +100,6 @@ if (
           });
 
           if (!user) {
-            // Create user with LinkedIn profile data
             user = await User.create({
               firstName:
                 profile.name?.givenName ||
@@ -137,7 +130,4 @@ if (
     )
   );
 } else {
-  // console.log(
-  //   "⚠️  LinkedIn OAuth not configured - missing environment variables"
-  // ); // Commented for production
 }

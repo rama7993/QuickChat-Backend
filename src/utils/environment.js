@@ -30,7 +30,6 @@ const configureCors = () => {
   const allowedOrigins =
     process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()) || [];
 
-  // Default allowed origins for development
   const defaultOrigins = [
     "http://localhost:4200",
     "http://localhost:3000",
@@ -38,23 +37,19 @@ const configureCors = () => {
     "http://127.0.0.1:3000",
   ];
 
-  // Combine environment origins with defaults (remove duplicates)
   const allAllowedOrigins = [
     ...new Set([...allowedOrigins, ...defaultOrigins]),
   ];
 
   return cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
       if (!origin) {
         return callback(null, true);
       }
 
-      // Check if origin is in allowed list
       if (allAllowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        // In development, be more permissive
         if (process.env.NODE_ENV === "development") {
           console.warn(`⚠️ Allowing CORS for ${origin} in development mode`);
           callback(null, true);

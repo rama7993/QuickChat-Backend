@@ -3,10 +3,10 @@ function setTokenCookie(res, token) {
 
   res.cookie("token", token, {
     httpOnly: true,
-    secure: true, // only works over HTTPS
-    sameSite: "none", // allows cross-site cookie
+    secure: true,
+    sameSite: "none",
     expires: new Date(Date.now() + oneWeek),
-    path: "/", // for full site access
+    path: "/",
   });
 }
 
@@ -15,7 +15,7 @@ function clearTokenCookie(res) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    expires: new Date(Date.now()), // expire immediately
+    expires: new Date(Date.now()),
   });
 }
 

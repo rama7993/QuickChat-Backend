@@ -2,12 +2,10 @@ const Message = require("../models/message");
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 
-// Store active users and their socket connections
 const activeUsers = new Map();
 const typingUsers = new Map();
 
 module.exports = (io) => {
-  // Authentication middleware for socket connections
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -19,7 +17,6 @@ module.exports = (io) => {
       const { verifyToken } = require("../utils/jwt");
       const decoded = verifyToken(token);
 
-      // Extract userId from token (supports both userId and id fields)
       const userId = decoded.userId || decoded.id;
 
       if (!userId) {
@@ -41,7 +38,6 @@ module.exports = (io) => {
   });
 
   io.on("connection", (socket) => {
-    // Store user connection
     activeUsers.set(socket.userId, {
       socketId: socket.id,
       user: socket.user,
@@ -49,7 +45,6 @@ module.exports = (io) => {
       lastSeen: new Date(),
     });
 
-    // Notify other users that this user is online
     socket.broadcast.emit("user_online", {
       userId: socket.userId,
       username: socket.user.username,
@@ -57,10 +52,8 @@ module.exports = (io) => {
       lastSeen: new Date(),
     });
 
-    // Send authenticated user data to the connected user
     socket.emit("authenticated", socket.user);
 
-    // Send list of online users
     const onlineUsersList = Array.from(activeUsers.values()).map((user) => ({
       userId: user.user._id,
       username: user.user.username,
@@ -69,14 +62,11 @@ module.exports = (io) => {
     }));
     socket.emit("online_users", onlineUsersList);
 
-    // Handle joining chat rooms
     socket.on("join_room", ({ roomId, roomType, userId }) => {
       socket.join(roomId);
-      // Load recent messages for the room
       loadRecentMessages(socket, roomId, roomType);
     });
 
-    // Handle leaving chat rooms
     socket.on("leave_room", ({ roomId, userId }) => {
       socket.leave(roomId);
     });
@@ -106,13 +96,11 @@ module.exports = (io) => {
 
           await newMessage.save();
 
-          // Populate message with sender details
           const populatedMessage = await Message.findById(newMessage._id)
             .populate("sender", "_id username firstName lastName photoUrl")
             .populate("receiver", "_id username firstName lastName photoUrl")
             .populate("group", "_id name avatar");
 
-          // Determine room ID for broadcasting
           let roomId;
           if (groupId) {
             roomId = `group_${groupId}`;
@@ -121,7 +109,6 @@ module.exports = (io) => {
           }
 
           if (roomId) {
-            // Broadcast message to all users in the room
             io.to(roomId).emit("message_received", populatedMessage);
           }
         } catch (err) {
@@ -130,7 +117,6 @@ module.exports = (io) => {
       }
     );
 
-    // Typing indicators
     socket.on("start_typing", ({ receiverId, groupId, userId, username }) => {
       const roomId = groupId
         ? `group_${groupId}`
@@ -167,7 +153,6 @@ module.exports = (io) => {
       });
     });
 
-    // File upload functionality
     socket.on("upload_file", async (data) => {
       let uploadId = null;
       try {
@@ -184,13 +169,11 @@ module.exports = (io) => {
         } = data;
         uploadId = id;
 
-        // Validation
         if (!fileData) {
           throw new Error("No file data received");
         }
 
-        // Validate file size (max 10MB)
-        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
         if (fileSize > MAX_FILE_SIZE) {
           throw new Error(
             `File size exceeds maximum limit of ${
@@ -218,7 +201,6 @@ module.exports = (io) => {
           throw new Error("File type not allowed");
         }
 
-        // Emit initial progress
         socket.emit(`upload_progress_${uploadId}`, 10);
 
         // Handle base64 file upload
@@ -232,21 +214,10 @@ module.exports = (io) => {
           messageType
         );
 
-        // Emit progress updates
         socket.emit(`upload_progress_${uploadId}`, 50);
         socket.emit(`upload_progress_${uploadId}`, 75);
         socket.emit(`upload_progress_${uploadId}`, 100);
 
-        // Create message record in database
-        const Message = require("../models/message");
-
-        // Use the isGroupChat parameter to determine message type
-        const isGroupMessage = isGroupChat || roomId.startsWith("group_");
-
-        // Use message helpers for content formatting
-        const { formatMessageContent } = require("../utils/messageHelpers");
-
-        // Create appropriate content based on file type
         const content = formatMessageContent(messageType, fileName, fileSize);
         const messageTypeForDB =
           messageType === "audio" ? "voice" : messageType;
@@ -281,13 +252,11 @@ module.exports = (io) => {
         );
         await savedMessage.populate("group", "_id name avatar");
 
-        // Broadcast the new message to the room
         const broadcastRoomId = isGroupMessage
           ? `group_${roomId}`
           : [socket.userId, roomId].sort().join("_");
         io.to(broadcastRoomId).emit("new_message", savedMessage);
 
-        // Emit upload completion
         socket.emit(`upload_complete_${uploadId}`, {
           success: true,
           fileUrl: uploadResult.fileUrl,
@@ -301,11 +270,9 @@ module.exports = (io) => {
         console.log(
           `File upload completed: ${fileName} -> ${uploadResult.fileUrl}`
         );
-        // File upload completed successfully
       } catch (error) {
         console.error("File upload error:", error);
         if (uploadId) {
-          // Provide user-friendly error message
           let errorMessage = "File upload failed";
 
           if (error.message) {
@@ -334,7 +301,6 @@ module.exports = (io) => {
       }
     });
 
-    // Mark message as read
     socket.on("mark_message_read", async ({ messageId, roomId, userId }) => {
       try {
         await Message.findByIdAndUpdate(messageId, { isRead: true });
@@ -345,14 +311,11 @@ module.exports = (io) => {
           readBy: userId,
           readAt: new Date(),
         });
-
-        // Message marked as read
       } catch (error) {
         // Handle error silently
       }
     });
 
-    // Update message
     socket.on("update_message", async ({ messageId, content, userId }) => {
       try {
         const message = await Message.findById(messageId);
@@ -382,14 +345,10 @@ module.exports = (io) => {
               .join("_");
 
         io.to(roomId).emit("message_updated", updatedMessage);
-
-        // Message updated successfully
       } catch (error) {
         socket.emit("error", { message: "Failed to update message" });
       }
     });
-
-    // Delete message
     socket.on("delete_message", async ({ messageId, userId }) => {
       try {
         const message = await Message.findById(messageId);
@@ -403,7 +362,6 @@ module.exports = (io) => {
           deletedAt: new Date(),
         });
 
-        // Broadcast message deletion
         const roomId = message.group
           ? `group_${message.group}`
           : [message.sender.toString(), message.receiver.toString()]
@@ -411,19 +369,15 @@ module.exports = (io) => {
               .join("_");
 
         io.to(roomId).emit("message_deleted", { messageId: messageId });
-
-        // Message deleted successfully
       } catch (error) {
         socket.emit("error", { message: "Failed to delete message" });
       }
     });
 
-    // Video call events
     socket.on(
       "video_call_offer",
       async ({ roomId, offer, callerId, receiverId }) => {
         try {
-          // Forward the offer to the receiver
           io.to(receiverId).emit("video_call_offer", {
             roomId,
             offer,
@@ -437,7 +391,6 @@ module.exports = (io) => {
 
     socket.on("video_call_answer", async ({ roomId, answer, receiverId }) => {
       try {
-        // Forward the answer to the caller
         io.to(receiverId).emit("video_call_answer", {
           roomId,
           answer,
@@ -452,7 +405,6 @@ module.exports = (io) => {
       "video_call_ice_candidate",
       async ({ roomId, candidate, receiverId }) => {
         try {
-          // Forward ICE candidate to the other peer
           io.to(receiverId).emit("video_call_ice_candidate", {
             roomId,
             candidate,
@@ -466,7 +418,6 @@ module.exports = (io) => {
 
     socket.on("video_call_end", async ({ roomId, userId }) => {
       try {
-        // Notify all participants that the call has ended
         io.to(roomId).emit("video_call_ended", {
           roomId,
           endedBy: userId,
@@ -476,21 +427,16 @@ module.exports = (io) => {
       }
     });
 
-    // Handle user disconnection
     socket.on("disconnect", () => {
-      // Remove from active users
       activeUsers.delete(socket.userId);
       typingUsers.delete(socket.userId);
 
-      // Notify other users that this user went offline
       socket.broadcast.emit("user_offline", socket.userId);
 
-      // Update user's last seen timestamp
       User.findByIdAndUpdate(socket.userId, { lastSeen: new Date() }).exec();
     });
   });
 
-  // Helper function to load recent messages
   async function loadRecentMessages(socket, roomId, roomType) {
     try {
       let query = {};
@@ -515,14 +461,12 @@ module.exports = (io) => {
         .sort({ timestamp: -1 })
         .limit(50);
 
-      // Send messages to the socket
       socket.emit("load_messages", messages.reverse());
     } catch (error) {
       // Handle error silently
     }
   }
 
-  // Helper function to handle file uploads - Cloudinary only
   async function handleSocketFileUpload(
     fileData,
     fileName,
@@ -539,29 +483,25 @@ module.exports = (io) => {
         isCloudinaryConfigured,
       } = require("../utils/fileUpload");
 
-      // Check if Cloudinary is configured
       if (!isCloudinaryConfigured) {
         throw new Error(
           "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables."
         );
       }
 
-      // Convert base64 to buffer
       let base64Data;
       if (fileData.includes(",")) {
-        base64Data = fileData.split(",")[1]; // Remove data:image/jpeg;base64, prefix
+        base64Data = fileData.split(",")[1];
       } else {
-        base64Data = fileData; // Already just the base64 data
+        base64Data = fileData;
       }
 
       const buffer = Buffer.from(base64Data, "base64");
 
-      // Validate buffer
       if (!buffer || buffer.length === 0) {
         throw new Error("Invalid file data: empty buffer");
       }
 
-      // Upload to Cloudinary
       const result = await new Promise((resolve, reject) => {
         const uploadOptions = {
           folder: "quickchat/uploads",
@@ -573,7 +513,6 @@ module.exports = (io) => {
           .upload_stream(uploadOptions, (error, result) => {
             if (error) {
               console.error("Cloudinary upload error:", error);
-              // Provide more helpful error messages
               if (
                 error.message &&
                 error.message.includes("Invalid Signature")

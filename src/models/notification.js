@@ -32,7 +32,6 @@ const notificationSchema = new mongoose.Schema(
       maxlength: 500,
     },
     data: {
-      // Flexible data object for different notification types
       messageId: mongoose.Schema.Types.ObjectId,
       groupId: mongoose.Schema.Types.ObjectId,
       senderId: mongoose.Schema.Types.ObjectId,
@@ -60,19 +59,16 @@ const notificationSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for better performance
 notificationSchema.index({ user: 1, read: 1, createdAt: -1 });
 notificationSchema.index({ type: 1, createdAt: -1 });
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// Method to mark as read
 notificationSchema.methods.markAsRead = function () {
   this.read = true;
   this.readAt = new Date();
   return this.save();
 };
 
-// Static method to create notification
 notificationSchema.statics.createNotification = async function (
   userId,
   type,
@@ -91,7 +87,6 @@ notificationSchema.statics.createNotification = async function (
 
   const savedNotification = await notification.save();
 
-  // Emit socket event if io is provided
   if (io && userId) {
     const populatedNotification = await this.findById(savedNotification._id)
       .populate("data.senderId", "firstName lastName photoUrl")

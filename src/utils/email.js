@@ -1,7 +1,6 @@
 const nodemailer = require("nodemailer");
 
 const sendEmail = async (options) => {
-  // 1) Create a transporter
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -10,7 +9,6 @@ const sendEmail = async (options) => {
     },
   });
 
-  // 2) Define the email options
   const mailOptions = {
     from: `QuickChat <${process.env.EMAIL_USER}>`,
     to: options.email,
@@ -19,7 +17,6 @@ const sendEmail = async (options) => {
     html: options.html,
   };
 
-  // 3) Actually send the email
   await transporter.sendMail(mailOptions);
 };
 

@@ -1,60 +1,47 @@
-const Joi = require("joi");
+const { z } = require("zod");
 
-const userSchema = Joi.object({
-  email: Joi.string()
-    .email({ tlds: { allow: false } })
-    .required()
-    .messages({
-      "string.email":
-        "Please enter a valid email address in the format 'example@domain.com'.",
-      "any.required": "Email is required.",
-    }),
-}).unknown(true); //to allow other keys like firstName, lastName, etc.
-
-const forgotPasswordSchema = Joi.object({
-  email: Joi.string()
-    .email({ tlds: { allow: false } })
-    .required()
-    .messages({
-      "string.email": "Please enter a valid email address.",
-      "any.required": "Email is required.",
-    }),
+const userSchema = z.object({
+  email: z.email({
+    required_error: "Email is required.",
+    invalid_type_error:
+      "Please enter a valid email address in the format 'example@domain.com'.",
+  }),
 });
 
-const resetPasswordSchema = Joi.object({
-  token: Joi.string().required().messages({
-    "any.required": "Reset token is required.",
-    "string.empty": "Reset token cannot be empty.",
+const forgotPasswordSchema = z.object({
+  email: z.email({
+    required_error: "Email is required.",
+    invalid_type_error: "Please enter a valid email address.",
   }),
-  password: Joi.string().min(8).required().messages({
-    "string.min": "Password must be at least 8 characters long.",
-    "any.required": "Password is required.",
-  }),
+});
+
+const resetPasswordSchema = z.object({
+  token: z
+    .string({ required_error: "Reset token is required." })
+    .min(1, "Reset token cannot be empty."),
+  password: z
+    .string({ required_error: "Password is required." })
+    .min(8, "Password must be at least 8 characters long."),
 });
 
 const validateUser = (req) => {
-  const { error } = userSchema.validate(req.body, { abortEarly: false });
-  if (error) {
-    // Combine all error messages into one string
-    throw new Error(error.details.map((d) => d.message).join(", "));
+  const result = userSchema.safeParse(req.body);
+  if (!result.success) {
+    throw new Error(result.error.issues.map((e) => e.message).join(", "));
   }
 };
 
 const validateForgotPassword = (req) => {
-  const { error } = forgotPasswordSchema.validate(req.body, {
-    abortEarly: false,
-  });
-  if (error) {
-    throw new Error(error.details.map((d) => d.message).join(", "));
+  const result = forgotPasswordSchema.safeParse(req.body);
+  if (!result.success) {
+    throw new Error(result.error.issues.map((e) => e.message).join(", "));
   }
 };
 
 const validateResetPassword = (req) => {
-  const { error } = resetPasswordSchema.validate(req.body, {
-    abortEarly: false,
-  });
-  if (error) {
-    throw new Error(error.details.map((d) => d.message).join(", "));
+  const result = resetPasswordSchema.safeParse(req.body);
+  if (!result.success) {
+    throw new Error(result.error.issues.map((e) => e.message).join(", "));
   }
 };
 

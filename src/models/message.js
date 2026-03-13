@@ -151,7 +151,6 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
-// Index for better query performance
 messageSchema.index({ sender: 1, receiver: 1, timestamp: -1 });
 messageSchema.index({ group: 1, timestamp: -1 });
 messageSchema.index({ "readBy.user": 1 });

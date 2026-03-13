@@ -56,7 +56,6 @@ const globalErrorHandler = (err, req, res, next) => {
     });
   }
 
-  // Production error handling
   if (err.isOperational) {
     return res.status(err.statusCode).json({
       success: false,
@@ -64,7 +63,6 @@ const globalErrorHandler = (err, req, res, next) => {
     });
   }
 
-  // Unknown errors
   logger.error("Unexpected error:", err);
   return res.status(500).json({
     success: false,

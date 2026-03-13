@@ -114,13 +114,10 @@ const groupSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for better performance
 groupSchema.index({ members: 1 });
 groupSchema.index({ createdBy: 1 });
-groupSchema.index({ inviteCode: 1 });
 groupSchema.index({ lastActivity: -1 });
 
-// Pre-save middleware to generate invite code
 groupSchema.pre("save", function (next) {
   if (this.isNew && this.groupType === "public" && !this.inviteCode) {
     this.inviteCode = Math.random().toString(36).substring(2, 15);
@@ -129,7 +126,6 @@ groupSchema.pre("save", function (next) {
   next();
 });
 
-// Method to check if user is admin
 groupSchema.methods.isAdmin = function (userId) {
   return (
     this.admins.includes(userId) ||
@@ -137,12 +133,10 @@ groupSchema.methods.isAdmin = function (userId) {
   );
 };
 
-// Method to check if user is member
 groupSchema.methods.isMember = function (userId) {
   return this.members.includes(userId);
 };
 
-// Method to add member
 groupSchema.methods.addMember = function (userId) {
   if (!this.members.includes(userId)) {
     this.members.push(userId);
@@ -150,7 +144,6 @@ groupSchema.methods.addMember = function (userId) {
   }
 };
 
-// Method to remove member
 groupSchema.methods.removeMember = function (userId) {
   this.members = this.members.filter(
     (member) => member.toString() !== userId.toString()

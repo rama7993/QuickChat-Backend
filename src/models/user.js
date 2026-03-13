@@ -192,7 +192,6 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-//  Pre-save hook to hash password only for local strategy
 userSchema.pre("save", async function (next) {
   if (this.isModified("password") && this.provider === "local") {
     const saltRounds = parseInt(process.env.SALT_ROUNDS, 10) || 10;
@@ -201,7 +200,6 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-//  JWT generator method
 userSchema.methods.getJWT = function () {
   const { signToken } = require("../utils/jwt");
   return signToken({
@@ -211,7 +209,6 @@ userSchema.methods.getJWT = function () {
   });
 };
 
-//  Password validation
 userSchema.methods.validatePassword = function (inputPassword) {
   return bcrypt.compare(inputPassword, this.password);
 };

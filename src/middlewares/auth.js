@@ -6,7 +6,6 @@ const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    // Check if header is present and starts with 'Bearer '
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         error: "Unauthorized",
@@ -14,7 +13,6 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Extract token
     const token = authHeader.split(" ")[1];
 
     if (!token) {
@@ -24,9 +22,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Verify token
     const decoded = verifyToken(token);
-    // Extract userId from token (supports both userId and id fields)
     const userId = decoded.userId || decoded.id;
 
     if (!userId) {
@@ -36,7 +32,6 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Find the user by ID
     const user = await User.findById(userId).select("-password");
     if (!user) {
       return res.status(404).json({
@@ -45,7 +40,6 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Check if user is active
     if (!user.isActive) {
       return res.status(403).json({
         error: "Forbidden",
@@ -53,7 +47,6 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Attach user to request
     req.user = user;
     next();
   } catch (error) {

@@ -1,6 +1,5 @@
 const cloudinary = require("cloudinary").v2;
 
-// Validate Cloudinary configuration
 const validateCloudinaryConfig = () => {
   const cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
   const api_key = process.env.CLOUDINARY_API_KEY;
@@ -19,14 +18,12 @@ const validateCloudinaryConfig = () => {
   return true;
 };
 
-// Configure Cloudinary - Required for file uploads
 const cloudinaryConfig = {
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 };
 
-// Only configure if credentials are present
 const isCloudinaryConfigured = validateCloudinaryConfig();
 if (isCloudinaryConfigured) {
   cloudinary.config(cloudinaryConfig);
@@ -36,7 +33,6 @@ if (isCloudinaryConfigured) {
   );
 }
 
-// File type validation
 const allowedImageTypes = [
   "image/jpeg",
   "image/jpg",
@@ -74,7 +70,6 @@ const allowedDocumentTypes = [
   "application/x-rar-compressed",
 ];
 
-// File type detection
 function getFileType(mimeType) {
   if (allowedImageTypes.includes(mimeType)) return "image";
   if (allowedVideoTypes.includes(mimeType)) return "video";
