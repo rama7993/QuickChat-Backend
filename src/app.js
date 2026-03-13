@@ -28,12 +28,11 @@ const uploadRouter = require("./routes/upload");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Security middleware
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     contentSecurityPolicy: false,
-  })
+  }),
 );
 
 app.use(compression());
@@ -51,7 +50,7 @@ app.use(configureCors());
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === "development" ? 10000 : 100,
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
@@ -62,7 +61,7 @@ app.use("/api/", limiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: process.env.NODE_ENV === "development" ? 1000 : 5,
   message: "Too many authentication attempts, please try again later.",
   skipSuccessfulRequests: true,
   skip: (req) => req.method === "OPTIONS",
@@ -107,7 +106,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Register routes
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/messages", chatRouter);
@@ -118,7 +116,6 @@ app.use("/api/upload", uploadRouter);
 const { globalErrorHandler } = require("./utils/errorHandler");
 app.use(globalErrorHandler);
 
-//  Connect to DB and start server
 connectDB()
   .then(() => {
     console.log("Connected to MongoDB");

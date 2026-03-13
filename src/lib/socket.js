@@ -1,6 +1,7 @@
 const Message = require("../models/message");
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
+const { formatMessageContent } = require("../utils/messageHelpers");
 
 const activeUsers = new Map();
 const typingUsers = new Map();
@@ -71,7 +72,6 @@ module.exports = (io) => {
       socket.leave(roomId);
     });
 
-    // Send message functionality
     socket.on(
       "send_message",
       async ({
@@ -114,7 +114,7 @@ module.exports = (io) => {
         } catch (err) {
           socket.emit("error", { message: "Failed to send message" });
         }
-      }
+      },
     );
 
     socket.on("start_typing", ({ receiverId, groupId, userId, username }) => {
@@ -178,11 +178,10 @@ module.exports = (io) => {
           throw new Error(
             `File size exceeds maximum limit of ${
               MAX_FILE_SIZE / (1024 * 1024)
-            }MB`
+            }MB`,
           );
         }
 
-        // Validate file type
         const {
           getFileType,
           allowedImageTypes,
@@ -203,7 +202,6 @@ module.exports = (io) => {
 
         socket.emit(`upload_progress_${uploadId}`, 10);
 
-        // Handle base64 file upload
         const uploadResult = await handleSocketFileUpload(
           fileData,
           fileName,
@@ -211,7 +209,7 @@ module.exports = (io) => {
           fileType,
           socket.userId,
           roomId,
-          messageType
+          messageType,
         );
 
         socket.emit(`upload_progress_${uploadId}`, 50);
@@ -224,8 +222,8 @@ module.exports = (io) => {
 
         const newMessage = new Message({
           sender: socket.userId,
-          receiver: isGroupMessage ? null : roomId,
-          group: isGroupMessage ? roomId.replace("group_", "") : null,
+          receiver: isGroupChat ? null : roomId,
+          group: isGroupChat ? roomId.replace("group_", "") : null,
           content: content,
           messageType: messageTypeForDB,
           attachments: [
@@ -244,15 +242,15 @@ module.exports = (io) => {
         const savedMessage = await newMessage.save();
         await savedMessage.populate(
           "sender",
-          "_id username firstName lastName photoUrl"
+          "_id username firstName lastName photoUrl",
         );
         await savedMessage.populate(
           "receiver",
-          "_id username firstName lastName photoUrl"
+          "_id username firstName lastName photoUrl",
         );
         await savedMessage.populate("group", "_id name avatar");
 
-        const broadcastRoomId = isGroupMessage
+        const broadcastRoomId = isGroupChat
           ? `group_${roomId}`
           : [socket.userId, roomId].sort().join("_");
         io.to(broadcastRoomId).emit("new_message", savedMessage);
@@ -268,7 +266,7 @@ module.exports = (io) => {
         });
 
         console.log(
-          `File upload completed: ${fileName} -> ${uploadResult.fileUrl}`
+          `File upload completed: ${fileName} -> ${uploadResult.fileUrl}`,
         );
       } catch (error) {
         console.error("File upload error:", error);
@@ -303,17 +301,29 @@ module.exports = (io) => {
 
     socket.on("mark_message_read", async ({ messageId, roomId, userId }) => {
       try {
-        await Message.findByIdAndUpdate(messageId, { isRead: true });
+        const readUserId = userId || socket.userId;
+        const updatedMessage = await Message.findOneAndUpdate(
+          {
+            _id: messageId,
+            "readBy.user": { $ne: readUserId },
+          },
+          {
+            $set: { isRead: true, status: "read" },
+            $push: {
+              readBy: { user: readUserId, readAt: new Date() },
+            },
+          },
+          { new: true },
+        );
 
-        // Notify sender that message was read
-        socket.to(roomId).emit("message_read", {
-          messageId: messageId,
-          readBy: userId,
-          readAt: new Date(),
-        });
-      } catch (error) {
-        // Handle error silently
-      }
+        if (updatedMessage) {
+          socket.to(roomId).emit("message_read", {
+            messageId: messageId,
+            readBy: readUserId,
+            readAt: new Date(),
+          });
+        }
+      } catch (error) {}
     });
 
     socket.on("update_message", async ({ messageId, content, userId }) => {
@@ -331,13 +341,12 @@ module.exports = (io) => {
             edited: true,
             editedAt: new Date(),
           },
-          { new: true }
+          { new: true },
         )
           .populate("sender", "_id username firstName lastName photoUrl")
           .populate("receiver", "_id username firstName lastName photoUrl")
           .populate("group", "_id name avatar");
 
-        // Broadcast updated message
         const roomId = message.group
           ? `group_${message.group}`
           : [message.sender.toString(), message.receiver.toString()]
@@ -386,7 +395,7 @@ module.exports = (io) => {
         } catch (error) {
           socket.emit("error", { message: "Failed to send video call offer" });
         }
-      }
+      },
     );
 
     socket.on("video_call_answer", async ({ roomId, answer, receiverId }) => {
@@ -413,7 +422,7 @@ module.exports = (io) => {
         } catch (error) {
           socket.emit("error", { message: "Failed to send ICE candidate" });
         }
-      }
+      },
     );
 
     socket.on("video_call_end", async ({ roomId, userId }) => {
@@ -474,7 +483,7 @@ module.exports = (io) => {
     fileType,
     userId,
     roomId,
-    messageType
+    messageType,
   ) {
     try {
       const {
@@ -485,7 +494,7 @@ module.exports = (io) => {
 
       if (!isCloudinaryConfigured) {
         throw new Error(
-          "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables."
+          "Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.",
         );
       }
 
@@ -502,13 +511,26 @@ module.exports = (io) => {
         throw new Error("Invalid file data: empty buffer");
       }
 
-      const result = await new Promise((resolve, reject) => {
-        const uploadOptions = {
-          folder: "quickchat/uploads",
-          resource_type: "auto",
-          public_id: `${Date.now()}_${Math.round(Math.random() * 1e9)}`,
-        };
+      const isDocument = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
+        "application/zip",
+        "application/x-rar-compressed",
+      ].includes(fileType);
 
+      const uploadOptions = {
+        folder: "quickchat/uploads",
+        resource_type: isDocument ? "raw" : "auto",
+        public_id: `${Date.now()}_${Math.round(Math.random() * 1e9)}`,
+      };
+
+      const result = await new Promise((resolve, reject) => {
         cloudinary.uploader
           .upload_stream(uploadOptions, (error, result) => {
             if (error) {
@@ -519,8 +541,8 @@ module.exports = (io) => {
               ) {
                 reject(
                   new Error(
-                    "Cloudinary authentication failed. Please check your CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET environment variables."
-                  )
+                    "Cloudinary authentication failed. Please check your CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET environment variables.",
+                  ),
                 );
               } else if (
                 error.message &&
@@ -528,16 +550,16 @@ module.exports = (io) => {
               ) {
                 reject(
                   new Error(
-                    "Invalid Cloudinary cloud name. Please check your CLOUDINARY_CLOUD_NAME environment variable."
-                  )
+                    "Invalid Cloudinary cloud name. Please check your CLOUDINARY_CLOUD_NAME environment variable.",
+                  ),
                 );
               } else {
                 reject(
                   new Error(
                     `Cloudinary upload failed: ${
                       error.message || "Unknown error"
-                    }`
-                  )
+                    }`,
+                  ),
                 );
               }
             } else {
