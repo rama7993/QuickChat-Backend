@@ -5,6 +5,7 @@ A real-time chat application backend built with Node.js, Express, Socket.IO, and
 ## Features
 
 - **Real-time messaging** via Socket.IO
+- **AI Smart Replies**: Context-aware natural quick replies powered by Gemini 2.5 Flash
 - **User authentication** with JWT tokens
 - **Private and group chats**
 - **Typing indicators**
@@ -94,6 +95,9 @@ The server will start on `http://localhost:3000` (or the port specified in your 
 ### Notifications
 - `GET /api/notifications` - Get notifications
 - `PUT /api/notifications/:id/read` - Mark notification as read
+
+### AI Features
+- `GET /api/ai/smart-replies/:conversationId` - Generate AI-powered quick replies based on chat history
 
 ## Socket.IO Events
 
@@ -187,6 +191,17 @@ Files are automatically uploaded to Cloudinary and messages are created in real-
 - `avatar` - Group avatar URL
 - `members` - Array of User references
 - `admin` - Group admin User reference
+
+## AI Features Scope (Future Roadmap)
+
+We plan to expand our AI capabilities with:
+- **Message Tone & Grammar Adjuster**: Rewrite drafts to sound professional, friendly, or fix grammar.
+- **Auto-Summarize Uploaded Documents**: Automatically read and summarize uploaded PDF/text files in the chat.
+- **@AI Assistant Bot**: A summonable system bot to answer questions and summarize history directly in group chats.
+- **Message Translation**: Real-time multi-language translation for global users.
+- **Chat Summarization**: Auto-generate summaries for missed group chat messages.
+- **Automated Moderation**: Proactive AI filtering for toxic or spam messages.
+- **Voice Transcription**: AI-powered text transcription for audio messages.
 
 ## Testing
 

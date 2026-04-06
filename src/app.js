@@ -24,6 +24,7 @@ const chatRouter = require("./routes/messages");
 const groupRouter = require("./routes/groups");
 const notificationRouter = require("./routes/notifications");
 const uploadRouter = require("./routes/upload");
+const aiRouter = require("./routes/ai");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -112,6 +113,7 @@ app.use("/api/messages", chatRouter);
 app.use("/api/groups", groupRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/upload", uploadRouter);
+app.use("/api/ai", aiRouter);
 
 const { globalErrorHandler } = require("./utils/errorHandler");
 app.use(globalErrorHandler);

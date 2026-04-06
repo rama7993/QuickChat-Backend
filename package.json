@@ -22,6 +22,9 @@
   "author": "QuickChat Team",
   "license": "MIT",
   "dependencies": {
+    "@ai-sdk/google": "^3.0.58",
+    "@google/generative-ai": "^0.24.1",
+    "ai": "^6.0.146",
     "bcrypt": "^6.0.0",
     "cloudinary": "^1.41.3",
     "compression": "^1.7.4",
