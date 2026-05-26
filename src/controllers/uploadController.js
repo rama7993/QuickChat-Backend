@@ -26,7 +26,8 @@ exports.uploadProfilePicture = async (req, res) => {
     if (!isCloudinaryConfigured) {
       return res.status(503).json({
         error: "Service Unavailable",
-        message: "File upload service is not configured. Please contact support.",
+        message:
+          "File upload service is not configured. Please contact support.",
       });
     }
 
@@ -45,17 +46,29 @@ exports.uploadProfilePicture = async (req, res) => {
           (error, result) => {
             if (error) {
               console.error("Cloudinary upload error:", error);
-              if (error.message && error.message.includes("Invalid Signature")) {
-                reject(new Error("Cloudinary authentication failed. Please check your API credentials."));
-              } else if (error.message && error.message.includes("Invalid cloud_name")) {
-                reject(new Error("Invalid Cloudinary cloud name configuration."));
+              if (
+                error.message &&
+                error.message.includes("Invalid Signature")
+              ) {
+                reject(
+                  new Error(
+                    "Cloudinary authentication failed. Please check your API credentials.",
+                  ),
+                );
+              } else if (
+                error.message &&
+                error.message.includes("Invalid cloud_name")
+              ) {
+                reject(
+                  new Error("Invalid Cloudinary cloud name configuration."),
+                );
               } else {
                 reject(error);
               }
             } else {
               resolve(result);
             }
-          }
+          },
         )
         .end(file.buffer);
     });

@@ -56,7 +56,7 @@ const notificationSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 notificationSchema.index({ user: 1, read: 1, createdAt: -1 });
@@ -75,7 +75,7 @@ notificationSchema.statics.createNotification = async function (
   title,
   message,
   data = {},
-  io = null
+  io = null,
 ) {
   const notification = new this({
     user: userId,

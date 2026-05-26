@@ -7,10 +7,10 @@ const validateCloudinaryConfig = () => {
 
   if (!cloud_name || !api_key || !api_secret) {
     console.warn(
-      "⚠️  Cloudinary credentials not configured. File uploads will fail."
+      "⚠️  Cloudinary credentials not configured. File uploads will fail.",
     );
     console.warn(
-      "Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file"
+      "Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file",
     );
     return false;
   }
@@ -29,7 +29,7 @@ if (isCloudinaryConfigured) {
   cloudinary.config(cloudinaryConfig);
 } else {
   console.error(
-    "❌ Cloudinary not configured. File uploads will not work until credentials are set."
+    "❌ Cloudinary not configured. File uploads will not work until credentials are set.",
   );
 }
 

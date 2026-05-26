@@ -12,7 +12,7 @@ if (
 ) {
   const googleCallbackUrl = new URL(
     process.env.GOOGLE_CALLBACK_URL,
-    getBackendBaseUrl()
+    getBackendBaseUrl(),
   ).href;
 
   passport.use(
@@ -51,8 +51,8 @@ if (
         } catch (err) {
           done(err, null);
         }
-      }
-    )
+      },
+    ),
   );
 } else {
 }
@@ -64,7 +64,7 @@ if (
 ) {
   const linkedinCallbackUrl = new URL(
     process.env.LINKEDIN_CALLBACK_URL,
-    getBackendBaseUrl()
+    getBackendBaseUrl(),
   ).href;
 
   passport.use(
@@ -126,8 +126,8 @@ if (
         } catch (err) {
           done(err, null);
         }
-      }
-    )
+      },
+    ),
   );
 } else {
 }

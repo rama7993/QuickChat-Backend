@@ -48,8 +48,8 @@ exports.createGroup = async (req, res) => {
           "Added to Group",
           `You have been added to the group "${name}"`,
           { groupId: group._id, createdBy },
-          req.io
-        )
+          req.io,
+        ),
       );
 
     await Promise.all(notificationPromises);
@@ -101,7 +101,7 @@ exports.getGroupDetails = async (req, res) => {
     }
 
     const isMember = group.members.some(
-      (member) => member._id.toString() === req.user._id.toString()
+      (member) => member._id.toString() === req.user._id.toString(),
     );
 
     if (!isMember) {
@@ -186,8 +186,8 @@ exports.addMembers = async (req, res) => {
         "Added to Group",
         `You have been added to the group "${group.name}"`,
         { groupId: group._id, addedBy: req.user._id },
-        req.io
-      )
+        req.io,
+      ),
     );
 
     await Promise.all(notificationPromises);
@@ -254,7 +254,7 @@ exports.manageAdmins = async (req, res) => {
       }
     } else if (action === "remove") {
       group.admins = group.admins.filter(
-        (admin) => admin.toString() !== memberId
+        (admin) => admin.toString() !== memberId,
       );
     }
 
@@ -325,7 +325,7 @@ exports.pinMessage = async (req, res) => {
 
     if (action === "pin") {
       const alreadyPinned = group.pinnedMessages.some(
-        (pin) => pin.message.toString() === messageId
+        (pin) => pin.message.toString() === messageId,
       );
 
       if (!alreadyPinned) {
@@ -336,7 +336,7 @@ exports.pinMessage = async (req, res) => {
       }
     } else if (action === "unpin") {
       group.pinnedMessages = group.pinnedMessages.filter(
-        (pin) => pin.message.toString() !== messageId
+        (pin) => pin.message.toString() !== messageId,
       );
     }
 
@@ -418,7 +418,7 @@ exports.getAvailableUsers = async (req, res) => {
   try {
     const users = await User.find(
       { _id: { $ne: req.user._id } },
-      "firstName lastName photoUrl email status"
+      "firstName lastName photoUrl email status",
     ).sort({ firstName: 1 });
 
     res.json(users);

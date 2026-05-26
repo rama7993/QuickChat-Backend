@@ -111,7 +111,7 @@ const groupSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 groupSchema.index({ members: 1 });
@@ -146,10 +146,10 @@ groupSchema.methods.addMember = function (userId) {
 
 groupSchema.methods.removeMember = function (userId) {
   this.members = this.members.filter(
-    (member) => member.toString() !== userId.toString()
+    (member) => member.toString() !== userId.toString(),
   );
   this.admins = this.admins.filter(
-    (admin) => admin.toString() !== userId.toString()
+    (admin) => admin.toString() !== userId.toString(),
   );
   this.lastActivity = new Date();
 };

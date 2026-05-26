@@ -1,4 +1,6 @@
-require("dotenv").config();
+require("dotenv").config({
+  path: `.env.${process.env.NODE_ENV || "development"}`,
+});
 
 const { validateEnvironment } = require("./utils/envValidator");
 validateEnvironment();
@@ -84,7 +86,7 @@ app.use(passport.initialize());
 
 const server = http.createServer(app);
 const allowedOrigins =
-  process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()) || [];
+  process.env.FRONTEND_URL?.split(",").map((o) => o.trim()) || [];
 const defaultOrigins = [
   "http://localhost:4200",
   "http://localhost:3000",

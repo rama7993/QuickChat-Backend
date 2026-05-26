@@ -101,7 +101,7 @@ exports.markAllRead = async (req, res) => {
   try {
     await Notification.updateMany(
       { user: req.user._id, read: false },
-      { read: true, readAt: new Date() }
+      { read: true, readAt: new Date() },
     );
 
     res.json({ message: "All notifications marked as read" });

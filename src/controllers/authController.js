@@ -69,7 +69,7 @@ exports.loginDemo = async (req, res) => {
   sendSuccess(
     res,
     { user: userData, token },
-    "Logged in as Guest User successfully"
+    "Logged in as Guest User successfully",
   );
 };
 
@@ -153,17 +153,13 @@ exports.changePassword = async (req, res) => {
 
   const isMatch = await bcrypt.compare(oldPassword, user.password);
   if (!isMatch) {
-    return sendError(
-      res,
-      "The current password you entered is incorrect",
-      400
-    );
+    return sendError(res, "The current password you entered is incorrect", 400);
   }
 
   if (!newPassword || newPassword.length < 8) {
     return sendValidationError(
       res,
-      "Password must be at least 8 characters long"
+      "Password must be at least 8 characters long",
     );
   }
 
@@ -191,7 +187,7 @@ exports.forgotPassword = async (req, res) => {
     return sendSuccess(
       res,
       null,
-      "If an account with that email exists, a password reset link has been sent."
+      "If an account with that email exists, a password reset link has been sent.",
     );
   }
 
@@ -226,7 +222,7 @@ exports.forgotPassword = async (req, res) => {
     sendSuccess(
       res,
       null,
-      "Email sent! Please check your inbox for the password reset link."
+      "Email sent! Please check your inbox for the password reset link.",
     );
   } catch (err) {
     console.error("Email send error:", err);
@@ -256,7 +252,7 @@ exports.resetPassword = async (req, res) => {
     return sendError(
       res,
       "The password reset link is invalid or has expired. Please request a new one.",
-      400
+      400,
     );
   }
 

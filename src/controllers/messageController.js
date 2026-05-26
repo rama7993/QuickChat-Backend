@@ -1,7 +1,12 @@
 const Message = require("../models/message");
 const Group = require("../models/groups");
 const Notification = require("../models/notification");
-const { sendSuccess, sendError, sendValidationError, sendNotFound } = require("../utils/response");
+const {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+} = require("../utils/response");
 const mongoose = require("mongoose");
 
 /**
@@ -113,7 +118,7 @@ exports.getPrivateMessages = async (req, res) => {
     {
       $push: { readBy: { user: currentUserId, readAt: new Date() } },
       $set: { status: "read" },
-    }
+    },
   );
 
   sendSuccess(res, messages.reverse(), "Messages retrieved successfully");
@@ -146,11 +151,7 @@ exports.getGroupMessages = async (req, res) => {
     .populate("reactions.user", "firstName lastName")
     .lean();
 
-  sendSuccess(
-    res,
-    messages.reverse(),
-    "Group messages retrieved successfully"
-  );
+  sendSuccess(res, messages.reverse(), "Group messages retrieved successfully");
 };
 
 /**
@@ -200,7 +201,7 @@ exports.sendPrivateMessage = async (req, res) => {
     "New Message",
     `You have a new message from ${req.user.firstName}`,
     { messageId: message._id, senderId },
-    req.io
+    req.io,
   );
 
   req.io.to(receiverId).emit("newMessage", fullMessage);
@@ -239,7 +240,7 @@ exports.sendGroupMessage = async (req, res) => {
     return sendError(
       res,
       "Access denied. You are not a member of this group.",
-      403
+      403,
     );
   }
 
@@ -266,8 +267,8 @@ exports.sendGroupMessage = async (req, res) => {
         "New Group Message",
         `${req.user.firstName} sent a message in ${group.name}`,
         { messageId: message._id, groupId, senderId },
-        req.io
-      )
+        req.io,
+      ),
     );
 
   await Promise.all(notificationPromises);
@@ -295,7 +296,7 @@ exports.addReaction = async (req, res) => {
     }
 
     message.reactions = message.reactions.filter(
-      (reaction) => reaction.user.toString() !== userId.toString()
+      (reaction) => reaction.user.toString() !== userId.toString(),
     );
 
     message.reactions.push({
@@ -450,7 +451,7 @@ exports.deleteConversation = async (req, res) => {
       {
         deleted: true,
         deletedAt: new Date(),
-      }
+      },
     );
 
     req.io.to(currentUserId.toString()).emit("conversationDeleted", {
@@ -485,7 +486,7 @@ exports.deleteGroupConversation = async (req, res) => {
     }
 
     const isMember = group.members.some(
-      (member) => member.toString() === currentUserId.toString()
+      (member) => member.toString() === currentUserId.toString(),
     );
     if (!isMember) {
       return sendError(res, "Access denied", 403);
@@ -496,7 +497,7 @@ exports.deleteGroupConversation = async (req, res) => {
       {
         deleted: true,
         deletedAt: new Date(),
-      }
+      },
     );
 
     group.members.forEach((memberId) => {

@@ -11,7 +11,7 @@ const validateEnvironment = () => {
   const optional = {
     PORT: process.env.PORT || "3000",
     NODE_ENV: process.env.NODE_ENV || "development",
-    CORS_ORIGIN: process.env.CORS_ORIGIN,
+    FRONTEND_URL: process.env.FRONTEND_URL,
     JWT_EXPIRATION: process.env.JWT_EXPIRATION || "7d",
     SALT_ROUNDS: process.env.SALT_ROUNDS || "10",
   };
@@ -30,13 +30,13 @@ const validateEnvironment = () => {
     "your-super-secret-jwt-key-change-this-in-production"
   ) {
     warnings.push(
-      "JWT_SECRET is using default value. Please change it in production!"
+      "JWT_SECRET is using default value. Please change it in production!",
     );
   }
 
-  if (!process.env.CORS_ORIGIN) {
+  if (!process.env.FRONTEND_URL) {
     warnings.push(
-      "CORS_ORIGIN not set. Defaulting to allow all origins (not recommended for production)"
+      "FRONTEND_URL not set. Defaulting to allow all origins (not recommended for production)",
     );
   }
 

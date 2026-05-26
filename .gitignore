@@ -1,2 +1,17 @@
-.env
+# Dependency directories
 /node_modules
+/dist
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store

@@ -1,5 +1,9 @@
 const User = require("../models/user");
-const { sendSuccess, sendNotFound, sendForbidden } = require("../utils/response");
+const {
+  sendSuccess,
+  sendNotFound,
+  sendForbidden,
+} = require("../utils/response");
 
 /**
  * @desc    Get all users (filtered to exclude sensitive data)

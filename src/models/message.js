@@ -148,7 +148,7 @@ const messageSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 messageSchema.index({ sender: 1, receiver: 1, timestamp: -1 });

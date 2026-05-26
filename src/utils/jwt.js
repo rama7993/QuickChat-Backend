@@ -4,7 +4,7 @@ const getJWTSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error(
-      "JWT_SECRET environment variable is required. Please set it in your .env file."
+      "JWT_SECRET environment variable is required. Please set it in your .env file.",
     );
   }
   return secret;

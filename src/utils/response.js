@@ -10,7 +10,7 @@ const sendSuccess = (
   res,
   data = null,
   message = "Success",
-  statusCode = 200
+  statusCode = 200,
 ) => {
   const response = {
     success: true,
@@ -31,7 +31,7 @@ const sendError = (
   res,
   message = "An error occurred",
   statusCode = 500,
-  error = null
+  error = null,
 ) => {
   const response = {
     success: false,

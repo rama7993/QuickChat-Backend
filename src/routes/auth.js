@@ -12,15 +12,27 @@ router.post("/login", asyncHandler(authController.login));
 
 router.post("/demo", asyncHandler(authController.loginDemo));
 
-router.post("/refresh", authMiddleware, asyncHandler(authController.refreshToken));
+router.post(
+  "/refresh",
+  authMiddleware,
+  asyncHandler(authController.refreshToken),
+);
 
 router.post("/logout", authController.logout);
 
-router.get("/validate", authMiddleware, asyncHandler(authController.validateToken));
+router.get(
+  "/validate",
+  authMiddleware,
+  asyncHandler(authController.validateToken),
+);
 
 router.post("/register", asyncHandler(authController.register));
 
-router.post("/change-password", authMiddleware, asyncHandler(authController.changePassword));
+router.post(
+  "/change-password",
+  authMiddleware,
+  asyncHandler(authController.changePassword),
+);
 
 router.post("/forgot-password", asyncHandler(authController.forgotPassword));
 
@@ -31,7 +43,7 @@ router.get(
   passport.authenticate("google", {
     scope: ["profile", "email"],
     session: false,
-  })
+  }),
 );
 
 router.get(
@@ -40,7 +52,7 @@ router.get(
     session: false,
     failureRedirect: "/login",
   }),
-  authController.googleCallback
+  authController.googleCallback,
 );
 
 router.get("/linkedin", passport.authenticate("linkedin", { session: false }));
@@ -51,8 +63,8 @@ router.get(
     if (req.query.error) {
       return res.redirect(
         `${getFrontendBaseUrl()}/login?error=linkedin_oauth_error&message=${encodeURIComponent(
-          req.query.error_description || req.query.error
-        )}`
+          req.query.error_description || req.query.error,
+        )}`,
       );
     }
     next();
@@ -61,7 +73,7 @@ router.get(
     session: false,
     failureRedirect: `${getFrontendBaseUrl()}/login?error=linkedin_auth_failed`,
   }),
-  authController.linkedinCallback
+  authController.linkedinCallback,
 );
 
 module.exports = router;

@@ -25,7 +25,7 @@ router.use(authMiddleware);
 router.post(
   "/profile-picture",
   upload.single("profilePicture"),
-  uploadController.uploadProfilePicture
+  uploadController.uploadProfilePicture,
 );
 
 module.exports = router;

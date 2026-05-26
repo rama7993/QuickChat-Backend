@@ -6,9 +6,16 @@ const messageController = require("../controllers/messageController");
 
 router.use(authMiddleware);
 
-router.get("/conversations", authMiddleware, asyncHandler(messageController.getConversations));
+router.get(
+  "/conversations",
+  authMiddleware,
+  asyncHandler(messageController.getConversations),
+);
 
-router.get("/private/:userId", asyncHandler(messageController.getPrivateMessages));
+router.get(
+  "/private/:userId",
+  asyncHandler(messageController.getPrivateMessages),
+);
 
 router.get("/group/:groupId", asyncHandler(messageController.getGroupMessages));
 
@@ -22,9 +29,15 @@ router.put("/:messageId", messageController.editMessage);
 
 router.delete("/:messageId", messageController.deleteMessage);
 
-router.delete("/conversation/:userId", asyncHandler(messageController.deleteConversation));
+router.delete(
+  "/conversation/:userId",
+  asyncHandler(messageController.deleteConversation),
+);
 
-router.delete("/group/:groupId", asyncHandler(messageController.deleteGroupConversation));
+router.delete(
+  "/group/:groupId",
+  asyncHandler(messageController.deleteGroupConversation),
+);
 
 router.get("/search/:query", messageController.searchMessages);
 
